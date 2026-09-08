@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# better-sqlite3 ships a native addon; pnpm 10 blocks lifecycle scripts by
+# default, so it must be explicitly allowed to run its prebuild/install step.
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild

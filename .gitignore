@@ -1,0 +1,35 @@
+# Dependencies (matches node_modules at every level of the monorepo)
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+**/dist/
+.vite/
+build/
+
+# Logs / editor / OS junk
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local databases
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+apps/server/data/
+
+# Rust / Tauri
+apps/desktop/src-tauri/target/
+
+# Env / secrets
+.env
+.env.local

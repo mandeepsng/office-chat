@@ -1,0 +1,21 @@
+{
+  "name": "office-chat",
+  "private": true,
+  "packageManager": "pnpm@10.34.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,desktop -c blue,magenta \"pnpm dev:server\" \"pnpm dev:desktop\"",
+    "dev:server": "pnpm --filter @office-chat/server dev",
+    "dev:desktop": "pnpm --filter @office-chat/desktop dev",
+    "build": "pnpm --filter @office-chat/desktop build",
+    "tauri": "pnpm --filter @office-chat/desktop tauri",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @office-chat/server test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.6.3"
+  }
+}
