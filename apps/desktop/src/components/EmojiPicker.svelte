@@ -28,12 +28,10 @@
 </div>
 
 <style>
-  .popover { position: relative; }
+  .popover { position: static; }
   .backdrop { position: fixed; inset: 0; z-index: 1; border: 0; padding: 0; background: transparent; cursor: default; }
   emoji-picker {
-    position: absolute;
-    bottom: 8px;
-    left: 0;
+    position: relative;
     z-index: 2;
     --background: var(--surface);
     --border-color: var(--border);

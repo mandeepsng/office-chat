@@ -39,14 +39,16 @@
 </script>
 
 <footer class="composer">
-  <div class="pickers">
-    {#if open === "emoji"}
+  {#if open === "emoji"}
+    <div class="picker-anchor emoji">
       <EmojiPicker onpick={insertEmoji} onclose={() => (open = null)} />
-    {/if}
-    {#if open === "gif"}
+    </div>
+  {/if}
+  {#if open === "gif"}
+    <div class="picker-anchor gif">
       <GifPicker onpick={pickGif} onclose={() => (open = null)} />
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   <button
     class="icon"
@@ -83,7 +85,13 @@
     background: var(--surface);
     position: relative;
   }
-  .pickers { position: absolute; bottom: 100%; left: 12px; }
+  .picker-anchor {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    z-index: 50;
+  }
+  .picker-anchor.emoji { left: 12px; }
+  .picker-anchor.gif { right: 12px; }
   textarea {
     flex: 1;
     resize: none;

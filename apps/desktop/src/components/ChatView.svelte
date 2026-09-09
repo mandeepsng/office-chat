@@ -97,12 +97,13 @@
 
 <style>
   .chat {
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    display: flex;
+    flex-direction: column;
     height: 100vh;
     min-width: 0;
   }
-  .chat.empty-room { place-items: center; color: var(--text-faint); }
+  .chat.empty-room { align-items: center; justify-content: center; color: var(--text-faint); }
+  .head, .banner { flex: none; }
   .head {
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
@@ -126,7 +127,7 @@
     padding: 6px 20px;
     text-align: center;
   }
-  .messages { overflow-y: auto; padding: 18px 20px; }
+  .messages { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 20px; }
   .empty { height: 100%; display: grid; place-content: center; text-align: center; color: var(--text-faint); }
   .wave { font-size: 18px; }
   .typing { color: var(--text-faint); font-size: 12px; padding: 6px 2px; }

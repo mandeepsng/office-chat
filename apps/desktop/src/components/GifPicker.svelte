@@ -68,12 +68,10 @@
 </div>
 
 <style>
-  .popover { position: relative; }
+  .popover { position: static; }
   .backdrop { position: fixed; inset: 0; z-index: 1; border: 0; padding: 0; background: transparent; cursor: default; }
   .panel {
-    position: absolute;
-    bottom: 8px;
-    left: 0;
+    position: relative;
     z-index: 2;
     width: 320px;
     height: 360px;
