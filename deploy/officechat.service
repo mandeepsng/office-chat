@@ -1,0 +1,34 @@
+# OfficeChat server — systemd unit (alternative to PM2).
+#
+# Install:
+#   sudo cp deploy/officechat.service /etc/systemd/system/officechat.service
+#   # edit User/WorkingDirectory below if your paths differ
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now officechat
+#
+# Logs:    journalctl -u officechat -f
+# Restart: sudo systemctl restart officechat
+
+[Unit]
+Description=OfficeChat WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+User=officechat
+WorkingDirectory=/opt/office-chat
+# pnpm runs the server's "start" script (tsx src/index.ts). Adjust the path
+# to pnpm if it lives elsewhere:  which pnpm
+ExecStart=/usr/bin/pnpm --filter @office-chat/server start
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+# Reads apps/server/.env via dotenv, so no EnvironmentFile needed here.
+
+# Basic hardening
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
