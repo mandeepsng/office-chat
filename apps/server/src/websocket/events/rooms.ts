@@ -48,5 +48,6 @@ export function handleRoomHistory(ec: EventContext, payload: unknown): void {
     roomId: input.roomId,
     messages: page.messages,
     hasMore: page.hasMore,
+    reads: ec.app.repos.messages.readReceiptsForRoom(input.roomId),
   });
 }

@@ -4,6 +4,7 @@
   import { auth } from "./lib/stores/auth.svelte";
   import { connection } from "./lib/stores/connection.svelte";
   import { config } from "./lib/config";
+  import { runAutoUpdate } from "./lib/updater";
   import JoinScreen from "./components/JoinScreen.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import ChatView from "./components/ChatView.svelte";
@@ -14,7 +15,11 @@
 
   let sidebar = $state<Sidebar>();
 
-  onMount(() => controller.init());
+  onMount(() => {
+    controller.init();
+    // Fire-and-forget: check GitHub Releases for a newer signed build.
+    void runAutoUpdate();
+  });
 
   function onKeydown(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {

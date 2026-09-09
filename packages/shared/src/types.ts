@@ -60,6 +60,15 @@ export interface Message {
   deletedAt: string | null;
 }
 
+/** Who has read up to which message in a room (group "seen by" avatars). */
+export interface ReadReceipt {
+  userId: string;
+  /** The last message this user has read. */
+  messageId: string;
+  /** created_at of that message, so clients can place the marker without a lookup. */
+  createdAt: string;
+}
+
 /** The envelope every WebSocket frame uses, in both directions. */
 export interface WsEnvelope<T = unknown> {
   type: string;

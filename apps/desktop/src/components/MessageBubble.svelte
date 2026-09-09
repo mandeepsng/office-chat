@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { User } from "@office-chat/shared";
   import type { ChatMessage } from "../lib/types";
 
   interface Props {
@@ -6,8 +7,14 @@
     own: boolean;
     senderName: string;
     showSender: boolean;
+    /** Group "seen by" — members who have read up to this message. */
+    seenBy?: User[];
   }
-  let { message, own, senderName, showSender }: Props = $props();
+  let { message, own, senderName, showSender, seenBy = [] }: Props = $props();
+
+  const MAX_AVATARS = 5;
+  const shownReaders = $derived(seenBy.slice(0, MAX_AVATARS));
+  const extraReaders = $derived(Math.max(0, seenBy.length - MAX_AVATARS));
 
   const time = $derived(
     new Date(message.createdAt).toLocaleTimeString([], {
@@ -47,11 +54,20 @@
       {#if own && tick}<span class="tick" class:read={message.status === "read"}>{tick}</span>{/if}
     </span>
   </div>
+
+  {#if own && seenBy.length > 0}
+    <div class="seen" aria-label={`Seen by ${seenBy.map((u) => u.name).join(", ")}`}>
+      {#each shownReaders as reader (reader.id)}
+        <span class="seen-avatar" title={reader.name}>{reader.name.charAt(0).toUpperCase()}</span>
+      {/each}
+      {#if extraReaders > 0}<span class="seen-more">+{extraReaders}</span>{/if}
+    </div>
+  {/if}
 </div>
 
 <style>
-  .message { display: flex; margin: 3px 0; }
-  .message.own { justify-content: flex-end; }
+  .message { display: flex; flex-direction: column; align-items: flex-start; margin: 3px 0; }
+  .message.own { align-items: flex-end; }
   .bubble {
     max-width: 66%;
     padding: 8px 11px;
@@ -83,4 +99,27 @@
   .pending, .fail { margin-right: auto; }
   .fail { color: var(--danger); }
   .tick.read { color: var(--read); opacity: 1; }
+  .seen {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2px;
+    margin-top: 3px;
+    padding-right: 2px;
+  }
+  .seen-avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    display: grid;
+    place-items: center;
+    font-size: 9px;
+    font-weight: 700;
+    border: 1px solid var(--surface);
+    margin-left: -4px;
+  }
+  .seen-avatar:first-child { margin-left: 0; }
+  .seen-more { font-size: 10px; color: var(--text-faint); margin-left: 2px; }
 </style>

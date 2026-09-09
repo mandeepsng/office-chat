@@ -128,3 +128,5 @@ Never use plain `ws://` over the public internet, and never commit real secrets.
 Reactions, replies, file/image sharing, voice/video, multi-office, invite links,
 device management, closed-app push (the notification layer is already behind a
 `NotificationService` interface), and end-to-end encryption.
+## reset DB
+pnpm --filter server dev

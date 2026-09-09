@@ -4,7 +4,9 @@
   import { rooms } from "../lib/stores/rooms.svelte";
   import { connection } from "../lib/stores/connection.svelte";
   import { directory, userName } from "../lib/stores/directory.svelte";
+  import { receipts } from "../lib/stores/receipts.svelte";
   import { messages, roomMessages } from "../lib/stores/messages.svelte";
+  import type { User } from "@office-chat/shared";
   import { controller } from "../lib/controller";
   import { roomSubtitle, roomTitle, directPeerId, directPeerOnline } from "../lib/roomDisplay";
   import MessageBubble from "./MessageBubble.svelte";
@@ -22,6 +24,27 @@
   );
 
   const online = $derived(!!room && room.type === "direct" && directPeerOnline(room, ownId));
+
+  // In group rooms, place each reader's avatar on the newest of MY messages they
+  // have read (WhatsApp-style "seen by"). messageId -> readers.
+  const seenBy = $derived.by(() => {
+    const map: Record<string, User[]> = {};
+    if (!room || room.type !== "group") return map;
+    const reads = receipts.readsByRoom[room.id] ?? {};
+    const ownMessages = list.filter((m) => m.senderId === ownId);
+    for (const [userId, pointer] of Object.entries(reads)) {
+      if (userId === ownId) continue;
+      const user = directory.users[userId];
+      if (!user) continue;
+      let target: (typeof ownMessages)[number] | undefined;
+      for (const m of ownMessages) {
+        if (m.createdAt <= pointer.createdAt) target = m;
+        else break;
+      }
+      if (target) (map[target.id] ??= []).push(user);
+    }
+    return map;
+  });
 
   let scroller = $state<HTMLDivElement>();
   let atBottom = true;
@@ -80,6 +103,7 @@
             own={message.senderId === ownId}
             senderName={userName(message.senderId)}
             showSender={room.type === "group" && list[i - 1]?.senderId !== message.senderId}
+            seenBy={seenBy[message.id] ?? []}
           />
         {/each}
       {/if}

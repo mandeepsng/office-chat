@@ -5,18 +5,21 @@ import {
   type Device,
   type Message,
   type MessageType,
+  type ReadReceipt,
   type Room,
   type User,
 } from "@office-chat/shared";
 import { config, detectPlatform } from "./config";
 import { store } from "./storage";
-import { notifications } from "./notifications";
+import { notifications, onNotificationClick } from "./notifications";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WsClient } from "./ws/client";
 import type { ChatMessage, Identity } from "./types";
 import { connection } from "./stores/connection.svelte";
 import { auth } from "./stores/auth.svelte";
 import { rooms, upsertRoom } from "./stores/rooms.svelte";
 import { directory, setOnline, setUsers, userName } from "./stores/directory.svelte";
+import { setReader, setRoomReads } from "./stores/receipts.svelte";
 import {
   addMessage,
   confirmMessage,
@@ -48,6 +51,8 @@ class Controller {
   init(): void {
     applyTheme();
     this.trackFocus();
+    // Clicking a message notification brings the app forward and opens its room.
+    void onNotificationClick((roomId) => this.focusRoom(roomId));
     this.wireEvents();
 
     const identity = store.getIdentity();
@@ -91,6 +96,19 @@ class Controller {
     this.client.disconnect();
     store.clearIdentity();
     location.reload();
+  }
+
+  /** Bring the window forward (it may be hidden in the tray) and open a room. */
+  private async focusRoom(roomId: string): Promise<void> {
+    try {
+      const win = getCurrentWindow();
+      await win.unminimize();
+      await win.show();
+      await win.setFocus();
+    } catch {
+      // Not running under Tauri (dev) — navigation still works below.
+    }
+    if (rooms.list.some((r) => r.id === roomId)) this.openRoom(roomId);
   }
 
   // --- Actions -------------------------------------------------------------
@@ -219,12 +237,14 @@ class Controller {
     this.client.on(ServerEvents.RoomUpdated, (p) => upsertRoom((p as { room: Room }).room));
 
     this.client.on(ServerEvents.RoomHistory, (p) => {
-      const { roomId, messages: older, hasMore } = p as {
+      const { roomId, messages: older, hasMore, reads } = p as {
         roomId: string;
         messages: Message[];
         hasMore: boolean;
+        reads?: ReadReceipt[];
       };
       prependHistory(roomId, older, hasMore);
+      if (reads) setRoomReads(roomId, reads);
       this.loadedRooms.add(roomId);
       store.cacheMessages(roomId, roomMessages(roomId));
     });
@@ -251,8 +271,14 @@ class Controller {
     });
 
     this.client.on(ServerEvents.MessageRead, (p) => {
-      const { roomId, messageId } = p as { roomId: string; messageId: string };
+      const { roomId, messageId, userId, createdAt } = p as {
+        roomId: string;
+        messageId: string;
+        userId: string;
+        createdAt: string;
+      };
       if (auth.identity) markReadUpTo(roomId, messageId, auth.identity.userId);
+      setReader(roomId, userId, messageId, createdAt);
     });
 
     this.client.on(ServerEvents.PresenceOnline, (p) =>
@@ -311,6 +337,7 @@ class Controller {
       void notifications.notify({
         title: userName(message.senderId),
         body: message.messageType === "gif" ? "Sent a GIF" : message.content,
+        roomId: message.roomId,
       });
     }
   }

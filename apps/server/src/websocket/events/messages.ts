@@ -58,11 +58,17 @@ export function handleMessageRead(ec: EventContext, payload: unknown): void {
   const userId = ec.conn.userId!;
   const input = parseOrThrow(messageReadSchema, payload);
   ec.app.messageService.markRead(userId, input);
+  const readMessage = ec.app.repos.messages.getById(input.messageId);
   // Tell other room members this user has read up to messageId.
   ec.hub.broadcastToRoom(
     input.roomId,
     ServerEvents.MessageRead,
-    { roomId: input.roomId, messageId: input.messageId, userId },
+    {
+      roomId: input.roomId,
+      messageId: input.messageId,
+      userId,
+      createdAt: readMessage?.createdAt ?? new Date().toISOString(),
+    },
     userId,
   );
 }

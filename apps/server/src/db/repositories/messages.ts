@@ -1,5 +1,5 @@
 import type { Database as DB } from "better-sqlite3";
-import type { Message, MessageType } from "@office-chat/shared";
+import type { Message, MessageType, ReadReceipt } from "@office-chat/shared";
 
 interface MessageRow {
   id: string;
@@ -110,5 +110,17 @@ export class MessagesRepository {
            read_at = excluded.read_at`,
       )
       .run(roomId, userId, messageId, readAt);
+  }
+
+  /** Everyone's last-read pointer in a room, with the read message's timestamp. */
+  readReceiptsForRoom(roomId: string): ReadReceipt[] {
+    return this.db
+      .prepare(
+        `SELECT r.user_id AS userId, r.last_read_msg_id AS messageId, m.created_at AS createdAt
+         FROM read_receipts r
+         JOIN messages m ON m.id = r.last_read_msg_id
+         WHERE r.room_id = ?`,
+      )
+      .all(roomId) as ReadReceipt[];
   }
 }

@@ -14,6 +14,8 @@
     "@office-chat/shared": "workspace:*",
     "@tauri-apps/api": "^2.8.0",
     "@tauri-apps/plugin-notification": "^2.3.0",
+    "@tauri-apps/plugin-process": "^2.2.0",
+    "@tauri-apps/plugin-updater": "^2.3.0",
     "emoji-picker-element": "^1.21.3",
     "svelte": "^5.38.7"
   },
