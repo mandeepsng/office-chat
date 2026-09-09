@@ -41,6 +41,14 @@ export class UsersRepository {
     return row ? toUser(row) : null;
   }
 
+  /** Case-insensitive lookup by display name; oldest match wins. */
+  getByName(name: string): User | null {
+    const row = this.db
+      .prepare(`SELECT * FROM users WHERE name = ? COLLATE NOCASE ORDER BY created_at LIMIT 1`)
+      .get(name) as UserRow | undefined;
+    return row ? toUser(row) : null;
+  }
+
   all(): User[] {
     return (this.db.prepare(`SELECT * FROM users ORDER BY name COLLATE NOCASE`).all() as UserRow[]).map(toUser);
   }

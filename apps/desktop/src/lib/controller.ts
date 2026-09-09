@@ -276,6 +276,14 @@ class Controller {
   }
 
   private onAuthSuccess(payload: AuthSuccessPayload): void {
+    // The server may have resolved us to an existing account (same name), whose
+    // canonical id differs from the one we generated. Persist it so the next
+    // auth:connect uses the id the server actually knows.
+    if (auth.identity && auth.identity.userId !== payload.user.id) {
+      auth.identity = { ...auth.identity, userId: payload.user.id, name: payload.user.name };
+      store.saveIdentity(auth.identity);
+    }
+
     auth.user = payload.user;
     auth.authError = null;
     auth.phase = "ready";

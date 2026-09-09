@@ -46,8 +46,8 @@ export function handleAuthRegister(ec: EventContext, payload: unknown): void {
   }
 
   ec.conn.deviceId = parsed.data.deviceId;
-  ec.app.userService.register(parsed.data);
-  completeAuth(ec, parsed.data.userId);
+  const { user } = ec.app.userService.register(parsed.data);
+  completeAuth(ec, user.id);
 }
 
 export function handleAuthConnect(ec: EventContext, payload: unknown): void {

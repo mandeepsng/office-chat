@@ -11,15 +11,20 @@ export class UserService {
    */
   register(input: AuthRegisterInput): { user: User; device: Device } {
     const now = new Date().toISOString();
+    // Reuse an existing account with the same display name instead of creating a
+    // duplicate. The canonical id (existing user's, or the client-supplied one on
+    // first join) is what the device and room membership bind to.
+    const existing = this.repos.users.getByName(input.name);
+    const userId = existing?.id ?? input.userId;
     const user = this.repos.users.upsert({
-      id: input.userId,
+      id: userId,
       name: input.name,
       avatar: input.avatar ?? null,
       now,
     });
     const device = this.repos.devices.upsert({
       id: input.deviceId,
-      userId: input.userId,
+      userId,
       deviceName: input.deviceName,
       platform: input.platform,
       now,
