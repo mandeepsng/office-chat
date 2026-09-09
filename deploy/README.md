@@ -56,6 +56,48 @@ VITE_WS_URL=wss://chat.example.com
 
 Verify:  `curl https://chat.example.com/health`  →  `{"status":"ok"}`
 
+## Logs — where everything shows up
+
+The server writes `[INFO] / [WARN] / [ERROR]` to stdout/stderr. Depending on
+how you run it and which layer the problem is in, logs land in different files:
+
+| What | Log location | View command |
+|---|---|---|
+| Server logs (PM2) | `~/.pm2/logs/officechat-out.log` | `pm2 logs officechat` |
+| Server errors / crashes (PM2) | `~/.pm2/logs/officechat-error.log` | `pm2 logs officechat --err` |
+| Server logs (if using systemd) | systemd journal | `journalctl -u officechat -f` |
+| Connection / WSS problems | `/var/log/nginx/error.log` | `sudo tail -f /var/log/nginx/error.log` |
+| Who connected / requests | `/var/log/nginx/access.log` | `sudo tail -f /var/log/nginx/access.log` |
+| Backup job | `/var/log/officechat-backup.log` | `tail -f /var/log/officechat-backup.log` |
+
+Quick rules of thumb:
+
+- **App crashing / restarting?** → `pm2 logs officechat --err`, and check the
+  restart counter with `pm2 status`.
+- **Desktop app won't connect?** → the server is probably fine; look in
+  `/var/log/nginx/error.log` (SSL/WSS upgrade issues live there).
+- **Backup didn't run?** → `/var/log/officechat-backup.log`.
+
+`deploy.sh` auto-configures `pm2-logrotate` (10M per file, 14 rotations,
+gzip-compressed) so `~/.pm2/logs/` never fills the disk. Nginx logs are rotated
+by the system's own `logrotate` by default.
+
+### Hard 150 MB cap
+
+`pm2-logrotate` handles normal rotation, but `clean-logs.sh` enforces an
+absolute ceiling: if `~/.pm2/logs/` ever grows past **150 MB** it deletes the
+rotated history and, if still over, flushes the active logs. Schedule it hourly:
+
+```bash
+crontab -e
+0 * * * *  /opt/office-chat/deploy/clean-logs.sh >> /var/log/officechat-cleanlogs.log 2>&1
+```
+
+Change the limit with an env var if needed, e.g. `LOG_LIMIT_MB=300`.
+
+> Note: message **content** is not logged in production (`LOG_MESSAGE_CONTENT=false`).
+> Only events are logged, for privacy.
+
 ## Updating later
 
 ```bash

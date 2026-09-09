@@ -36,6 +36,15 @@ if [[ -n "${DB_PATH:-}" ]]; then
   mkdir -p "$(dirname "$DB_PATH")"
 fi
 
+echo "==> Ensuring PM2 log rotation is configured"
+# Keeps ~/.pm2/logs from growing unbounded. Idempotent — safe every run.
+if ! pm2 list | grep -q pm2-logrotate; then
+  pm2 install pm2-logrotate
+fi
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 14
+pm2 set pm2-logrotate:compress true
+
 echo "==> Starting / restarting server under PM2"
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
   pm2 restart "$APP_NAME" --update-env
