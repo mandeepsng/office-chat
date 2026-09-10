@@ -45,15 +45,17 @@ pm2 set pm2-logrotate:max_size 10M
 pm2 set pm2-logrotate:retain 14
 pm2 set pm2-logrotate:compress true
 
-echo "==> Starting / restarting server under PM2"
+echo "==> Starting / restarting server under PM2 (ecosystem config)"
+ECOSYSTEM="$SCRIPT_DIR/ecosystem.config.cjs"
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-  pm2 restart "$APP_NAME" --update-env
+  # reload = zero-downtime restart, picks up new code + config.
+  pm2 reload "$ECOSYSTEM" --update-env
 else
-  pm2 start "pnpm --filter @office-chat/server start" --name "$APP_NAME"
+  pm2 start "$ECOSYSTEM"
   pm2 save
   echo
-  echo "First run detected. To start OfficeChat on boot, run the command"
-  echo "that 'pm2 startup' prints below (needs sudo):"
+  echo "First run detected. To start OfficeChat on boot (survives VPS reboot),"
+  echo "run the command that 'pm2 startup' prints below (needs sudo):"
   pm2 startup || true
 fi
 

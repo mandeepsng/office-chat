@@ -98,6 +98,31 @@ Change the limit with an env var if needed, e.g. `LOG_LIMIT_MB=300`.
 > Note: message **content** is not logged in production (`LOG_MESSAGE_CONTENT=false`).
 > Only events are logged, for privacy.
 
+## Crash / restart handling
+
+The server runs under PM2 via `deploy/ecosystem.config.cjs`, which covers every
+"server band ho gaya" case:
+
+| Situation | What happens |
+|---|---|
+| App crashes / throws | PM2 auto-restarts it (smart backoff: 2s, 4s, 8s…) |
+| Memory leak | Restarted automatically past 300 MB (`max_memory_restart`) |
+| VPS reboots | Comes back on boot — **if** you ran `pm2 startup` once (deploy.sh prompts) |
+| You deploy an update | `pm2 reload` = zero-downtime restart |
+
+Manual controls:
+
+```bash
+pm2 status                 # is it up? how many restarts?
+pm2 restart officechat     # force a restart
+pm2 stop officechat        # stop
+pm2 logs officechat --err  # why did it crash?
+```
+
+> Crash-loop guard: if it dies within 10s repeatedly, PM2 backs off instead of
+> hammering. Check `pm2 logs officechat --err` — a config/DB error usually needs
+> a fix, not just a restart.
+
 ## Updating later
 
 ```bash
