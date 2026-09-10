@@ -77,9 +77,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Vite bakes these into the client bundle at build time.
-          # VITE_WS_URL: repo Variable (public — it ships inside the app anyway).
-          # Falls back to ws://localhost:8787 if the Variable is not set.
-          VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+          # VITE_WS_URL: repo Secret. Falls back to ws://localhost:8787 if unset.
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
           # GIPHY key: repo Secret (optional — GIFs disabled if empty).
           VITE_GIPHY_API_KEY: ${{ secrets.VITE_GIPHY_API_KEY }}
           # Updater signing. tauri-action signs each artifact and generates
