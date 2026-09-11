@@ -5,6 +5,7 @@
   import { rooms } from "../lib/stores/rooms.svelte";
   import { directory, isOnline } from "../lib/stores/directory.svelte";
   import { toggleTheme, theme } from "../lib/stores/theme.svelte";
+  import { autostart, toggleAutostart } from "../lib/stores/autostart.svelte";
   import { roomTitle } from "../lib/roomDisplay";
   import ConnectionBadge from "./ConnectionBadge.svelte";
 
@@ -53,6 +54,17 @@
       <strong>{auth.user?.name}</strong>
       <ConnectionBadge />
     </div>
+    {#if autostart.ready}
+      <button
+        class="icon-btn"
+        class:active={autostart.enabled}
+        title={autostart.enabled ? "Launch at startup: on" : "Launch at startup: off"}
+        aria-pressed={autostart.enabled}
+        onclick={toggleAutostart}
+      >
+        {autostart.enabled ? "🚀" : "🛰️"}
+      </button>
+    {/if}
     <button class="icon-btn" title="Toggle theme" onclick={toggleTheme}>
       {theme.value === "dark" ? "☀️" : "🌙"}
     </button>
@@ -207,7 +219,11 @@
     cursor: pointer;
     font-size: 16px;
     color: var(--text-muted);
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
   }
+  .icon-btn:hover { opacity: 1; }
+  .icon-btn.active { opacity: 1; }
   .link {
     border: 0;
     background: transparent;
