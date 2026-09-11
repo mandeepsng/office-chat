@@ -17,3 +17,17 @@ export async function runAutoUpdate(): Promise<void> {
     console.warn("Auto-update skipped", err);
   }
 }
+
+/** How often to re-check for updates while the app keeps running (6 hours). */
+const UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Check for updates immediately, then every 6 hours for as long as the app is
+ * running. This matters because OfficeChat minimizes to the tray and launches
+ * at login, so a session can stay open for days without a restart — a
+ * startup-only check would never deliver updates to those users.
+ */
+export function startAutoUpdatePolling(): void {
+  void runAutoUpdate();
+  setInterval(() => void runAutoUpdate(), UPDATE_INTERVAL_MS);
+}

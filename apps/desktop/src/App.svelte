@@ -4,7 +4,7 @@
   import { auth } from "./lib/stores/auth.svelte";
   import { connection } from "./lib/stores/connection.svelte";
   import { config } from "./lib/config";
-  import { runAutoUpdate } from "./lib/updater";
+  import { startAutoUpdatePolling } from "./lib/updater";
   import { initAutostart } from "./lib/stores/autostart.svelte";
   import JoinScreen from "./components/JoinScreen.svelte";
   import Sidebar from "./components/Sidebar.svelte";
@@ -18,8 +18,8 @@
 
   onMount(() => {
     controller.init();
-    // Fire-and-forget: check GitHub Releases for a newer signed build.
-    void runAutoUpdate();
+    // Check GitHub Releases now and every 6 hours for a newer signed build.
+    startAutoUpdatePolling();
     // Register launch-at-login (on by default, user-toggleable in the sidebar).
     void initAutostart();
   });
