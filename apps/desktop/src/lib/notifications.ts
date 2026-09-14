@@ -1,9 +1,5 @@
-import {
-  isPermissionGranted,
-  onAction,
-  requestPermission,
-  sendNotification,
-} from "@tauri-apps/plugin-notification";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 export interface NotificationPayload {
   title: string;
@@ -17,32 +13,22 @@ export interface NotificationService {
   notify(payload: NotificationPayload): Promise<void>;
 }
 
-/** v1 implementation backed by Tauri's native notification plugin. */
-class TauriNotificationService implements NotificationService {
-  private granted = false;
-
-  private async ensurePermission(): Promise<boolean> {
-    if (this.granted) return true;
-    try {
-      this.granted = await isPermissionGranted();
-      if (!this.granted) {
-        this.granted = (await requestPermission()) === "granted";
-      }
-    } catch {
-      this.granted = false;
-    }
-    return this.granted;
-  }
-
+/**
+ * v1 implementation backed by a native Rust toast (see `src-tauri/src/notify.rs`).
+ *
+ * We deliberately bypass `@tauri-apps/plugin-notification` for message toasts:
+ * its desktop backend never wires up click handling, so a clicked notification
+ * could not open the conversation. The Rust command shows the toast and, on
+ * Windows, emits a `notification-click` event we forward to the app.
+ */
+class NativeNotificationService implements NotificationService {
   async notify(payload: NotificationPayload): Promise<void> {
     try {
-      if (await this.ensurePermission()) {
-        sendNotification({
-          title: payload.title,
-          body: payload.body,
-          ...(payload.roomId ? { extra: { roomId: payload.roomId } } : {}),
-        });
-      }
+      await invoke("show_notification", {
+        title: payload.title,
+        body: payload.body,
+        roomId: payload.roomId ?? null,
+      });
     } catch (err) {
       // Running in a plain browser (dev) — degrade gracefully.
       console.warn("Notification unavailable", err);
@@ -50,21 +36,20 @@ class TauriNotificationService implements NotificationService {
   }
 }
 
-export const notifications: NotificationService = new TauriNotificationService();
+export const notifications: NotificationService = new NativeNotificationService();
 
 /**
- * Register a handler for notification clicks. The clicked notification's
- * `extra.roomId` is passed through so the app can open the right conversation.
- * Best-effort: desktop click delivery varies by OS, and it throws in a plain
- * browser during dev, so failures are swallowed.
+ * Register a handler for notification clicks. The clicked notification's room
+ * id is passed through so the app can open the right conversation. Best-effort:
+ * desktop click delivery varies by OS, and `listen` throws in a plain browser
+ * during dev, so failures are swallowed.
  */
 export async function onNotificationClick(
   handler: (roomId: string) => void,
 ): Promise<void> {
   try {
-    await onAction((notification) => {
-      const roomId = (notification.extra as { roomId?: unknown } | undefined)?.roomId;
-      if (typeof roomId === "string") handler(roomId);
+    await listen<string | null>("notification-click", (event) => {
+      if (typeof event.payload === "string") handler(event.payload);
     });
   } catch (err) {
     console.warn("Notification click handling unavailable", err);

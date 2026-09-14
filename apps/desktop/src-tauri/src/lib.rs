@@ -1,3 +1,5 @@
+mod notify;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -29,6 +31,7 @@ pub fn run() {
     }
 
     builder
+        .invoke_handler(tauri::generate_handler![notify::show_notification])
         .setup(|app| {
             // System tray with a minimal Version / Show / Quit menu.
             // The version row is disabled so it reads as an info label, not a

@@ -2510,6 +2510,7 @@ dependencies = [
 name = "office-chat"
 version = "0.1.0"
 dependencies = [
+ "notify-rust",
  "serde",
  "serde_json",
  "tauri",
@@ -2519,6 +2520,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "tauri-winrt-notification",
 ]
 
 [[package]]
