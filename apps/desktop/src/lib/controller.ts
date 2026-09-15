@@ -12,6 +12,9 @@ import {
 import { config, detectPlatform } from "./config";
 import { store } from "./storage";
 import { notifications, onNotificationClick } from "./notifications";
+import { playIncoming, playSend } from "./sounds";
+import { setUnreadBadge, flashWindow } from "./badge";
+import { unread, bumpUnread, clearUnread } from "./stores/unread.svelte";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WsClient } from "./ws/client";
 import type { ChatMessage, Identity } from "./types";
@@ -121,6 +124,13 @@ class Controller {
       this.client.send(ClientEvents.RoomHistory, { roomId });
     }
     this.markReadLatest(roomId);
+    clearUnread(roomId);
+    this.syncBadge();
+  }
+
+  /** Mirror the total unread count onto the OS tray/taskbar. */
+  private syncBadge(): void {
+    void setUnreadBadge(unread.total);
   }
 
   loadOlder(roomId: string): void {
@@ -152,6 +162,7 @@ class Controller {
       status: "pending",
     };
     addMessage(optimistic, "pending");
+    playSend();
     this.client.send(ClientEvents.MessageSend, {
       roomId,
       clientMessageId,
@@ -331,6 +342,9 @@ class Controller {
 
     const isActive = rooms.activeRoomId === message.roomId;
     if (isActive && this.windowFocused) {
+      // Chat is open and focused, so the toast is suppressed — play a quiet
+      // in-app sound instead so the user still notices the message.
+      playIncoming();
       this.markReadLatest(message.roomId);
     } else {
       // Suppress notifications only for the focused, currently-open room.
@@ -339,6 +353,10 @@ class Controller {
         body: message.messageType === "gif" ? "Sent a GIF" : message.content,
         roomId: message.roomId,
       });
+      // Track it as unread and nudge the taskbar for attention.
+      bumpUnread(message.roomId);
+      this.syncBadge();
+      void flashWindow();
     }
   }
 
@@ -355,7 +373,11 @@ class Controller {
     this.windowFocused = document.hasFocus();
     window.addEventListener("focus", () => {
       this.windowFocused = true;
-      if (rooms.activeRoomId) this.markReadLatest(rooms.activeRoomId);
+      if (rooms.activeRoomId) {
+        this.markReadLatest(rooms.activeRoomId);
+        clearUnread(rooms.activeRoomId);
+        this.syncBadge();
+      }
     });
     window.addEventListener("blur", () => (this.windowFocused = false));
   }

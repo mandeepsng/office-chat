@@ -21,6 +21,8 @@ serde_json = "1"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-autostart = "2"
+# Ensures only one OfficeChat runs at a time; a second launch focuses the first.
+tauri-plugin-single-instance = "2"
 
 # Native toast with click-to-open support. The notification plugin's desktop
 # backend never wires up click handling, so we send message toasts ourselves.

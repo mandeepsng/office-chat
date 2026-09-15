@@ -1,4 +1,5 @@
 mod notify;
+mod tray;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -9,7 +10,23 @@ use tauri::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Single-instance must be registered before any other plugin so a second
+    // launch is intercepted immediately: instead of spawning a duplicate window
+    // (and a second WebSocket connection), we surface the existing one.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init());
 
@@ -31,7 +48,11 @@ pub fn run() {
     }
 
     builder
-        .invoke_handler(tauri::generate_handler![notify::show_notification])
+        .invoke_handler(tauri::generate_handler![
+            notify::show_notification,
+            tray::set_unread,
+            tray::flash_window
+        ])
         .setup(|app| {
             // System tray with a minimal Version / Show / Quit menu.
             // The version row is disabled so it reads as an info label, not a
@@ -47,7 +68,7 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&version, &show, &quit])?;
 
-            TrayIconBuilder::new()
+            TrayIconBuilder::with_id(tray::TRAY_ID)
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .tooltip("OfficeChat")

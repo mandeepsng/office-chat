@@ -25,7 +25,7 @@ pub fn show_notification<R: Runtime>(
 ) {
     #[cfg(windows)]
     {
-        use tauri_winrt_notification::{Duration, Toast};
+        use tauri_winrt_notification::{Duration, Sound, Toast};
 
         // In dev the app runs unpackaged, so it has no registered
         // AppUserModelID and Windows silently discards the toast unless we
@@ -43,6 +43,8 @@ pub fn show_notification<R: Runtime>(
             .title(&title)
             .text1(&body)
             .duration(Duration::Short)
+            // Windows' instant-message chime — light and chat-appropriate.
+            .sound(Some(Sound::IM))
             .on_activated(move |_action| {
                 // A plain body click carries no activation argument, so we
                 // forward the room captured when the toast was created.

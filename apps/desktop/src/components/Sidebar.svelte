@@ -3,6 +3,7 @@
   import { controller } from "../lib/controller";
   import { auth } from "../lib/stores/auth.svelte";
   import { rooms } from "../lib/stores/rooms.svelte";
+  import { unread } from "../lib/stores/unread.svelte";
   import { directory, isOnline } from "../lib/stores/directory.svelte";
   import { toggleTheme, theme } from "../lib/stores/theme.svelte";
   import { autostart, toggleAutostart } from "../lib/stores/autostart.svelte";
@@ -123,13 +124,17 @@
 </aside>
 
 {#snippet roomRow(room: Room)}
+  {@const count = unread.byRoom[room.id] ?? 0}
   <button
     class="row"
     class:active={rooms.activeRoomId === room.id}
     onclick={() => controller.openRoom(room.id)}
   >
     <span class="room-avatar">{room.type === "direct" ? "@" : "#"}</span>
-    {roomTitle(room, ownId)}
+    <span class="row-label">{roomTitle(room, ownId)}</span>
+    {#if count > 0}
+      <span class="unread">{count > 99 ? "99+" : count}</span>
+    {/if}
   </button>
 {/snippet}
 
@@ -196,6 +201,20 @@
   .row:hover { background: var(--hover); }
   .row.active { background: var(--active); color: var(--text); }
   .room-avatar { color: var(--text-faint); }
+  .row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .unread {
+    flex-shrink: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+  }
   .dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--text-faint);
