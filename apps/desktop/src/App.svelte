@@ -9,6 +9,8 @@
   import JoinScreen from "./components/JoinScreen.svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import ChatView from "./components/ChatView.svelte";
+  import Settings from "./components/Settings.svelte";
+  import { settingsUi } from "./lib/stores/settings.svelte";
 
   // While loading a saved identity, a dropped/failed socket surfaces as
   // "offline" — show the reason instead of spinning forever.
@@ -52,6 +54,10 @@
     <Sidebar bind:this={sidebar} />
     <ChatView />
   </div>
+{/if}
+
+{#if settingsUi.open}
+  <Settings />
 {/if}
 
 <style>

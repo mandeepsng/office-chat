@@ -4,8 +4,25 @@ mod tray;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
+
+/// Toggle the main window: hide it if it's visible and focused, otherwise bring
+/// it forward (unminimize + show + focus). Used by the global hotkey.
+#[cfg(desktop)]
+fn toggle_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let visible = window.is_visible().unwrap_or(false);
+        let focused = window.is_focused().unwrap_or(false);
+        if visible && focused {
+            let _ = window.hide();
+        } else {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,10 +47,27 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init());
 
-    // Self-update and autostart are desktop-only.
+    // System-wide hotkey (Ctrl+Shift+O, Cmd+Shift+O on macOS) that toggles the
+    // window from anywhere. Defined here so both the plugin handler and setup
+    // (which registers it) can see it.
+    #[cfg(desktop)]
+    let toggle_shortcut = {
+        use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
+        #[cfg(target_os = "macos")]
+        let mods = Modifiers::SUPER | Modifiers::SHIFT;
+        #[cfg(not(target_os = "macos"))]
+        let mods = Modifiers::CONTROL | Modifiers::SHIFT;
+        Shortcut::new(Some(mods), Code::KeyO)
+    };
+
+    // Self-update, autostart, global shortcut, and window-state are desktop-only.
     #[cfg(desktop)]
     {
         use tauri_plugin_autostart::MacosLauncher;
+        use tauri_plugin_global_shortcut::ShortcutState;
+        use tauri_plugin_window_state::StateFlags;
+
+        let shortcut = toggle_shortcut.clone();
         builder = builder
             .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_process::init())
@@ -44,7 +78,29 @@ pub fn run() {
             .plugin(tauri_plugin_autostart::init(
                 MacosLauncher::LaunchAgent,
                 Some(vec!["--autostart"]),
-            ));
+            ))
+            .plugin(
+                tauri_plugin_global_shortcut::Builder::new()
+                    .with_handler(move |app, triggered, event| {
+                        if event.state() == ShortcutState::Pressed && triggered == &shortcut {
+                            toggle_main_window(app);
+                        }
+                    })
+                    .build(),
+            )
+            // Persist size/position/maximized/fullscreen, but NOT visibility —
+            // otherwise the close-to-tray hide would make the next launch start
+            // hidden.
+            .plugin(
+                tauri_plugin_window_state::Builder::default()
+                    .with_state_flags(
+                        StateFlags::SIZE
+                            | StateFlags::POSITION
+                            | StateFlags::MAXIMIZED
+                            | StateFlags::FULLSCREEN,
+                    )
+                    .build(),
+            );
     }
 
     builder
@@ -53,7 +109,7 @@ pub fn run() {
             tray::set_unread,
             tray::flash_window
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // System tray with a minimal Version / Show / Quit menu.
             // The version row is disabled so it reads as an info label, not a
             // clickable action.
@@ -65,8 +121,15 @@ pub fn run() {
                 None::<&str>,
             )?;
             let show = MenuItem::with_id(app, "show", "Show OfficeChat", true, None::<&str>)?;
+            let dnd = MenuItem::with_id(
+                app,
+                "dnd",
+                "Toggle Do Not Disturb",
+                true,
+                None::<&str>,
+            )?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&version, &show, &quit])?;
+            let menu = Menu::with_items(app, &[&version, &show, &dnd, &quit])?;
 
             TrayIconBuilder::with_id(tray::TRAY_ID)
                 .icon(app.default_window_icon().unwrap().clone())
@@ -78,6 +141,10 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
+                    }
+                    "dnd" => {
+                        // The frontend owns the DND state; just ask it to flip.
+                        let _ = app.emit("toggle-dnd", ());
                     }
                     "quit" => {
                         // Confirm before actually exiting so an accidental
@@ -103,6 +170,15 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+
+            // Activate the global toggle hotkey now that the app is running.
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                if let Err(err) = app.global_shortcut().register(toggle_shortcut) {
+                    eprintln!("[shortcut] failed to register toggle hotkey: {err}");
+                }
+            }
 
             // When launched at system startup (via the autostart flag), stay
             // in the tray so the app boots quietly in the background and keeps

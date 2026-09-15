@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 /**
  * Native taskbar/tray helpers, backed by Rust commands in `src-tauri/src/tray.rs`.
@@ -19,6 +20,15 @@ export async function setUnreadBadge(count: number): Promise<void> {
 export async function flashWindow(): Promise<void> {
   try {
     await invoke("flash_window");
+  } catch {
+    // Not running under Tauri (dev browser) — ignore.
+  }
+}
+
+/** Register a handler for the tray's "Do Not Disturb" action. Best-effort. */
+export async function onToggleDnd(handler: () => void): Promise<void> {
+  try {
+    await listen("toggle-dnd", () => handler());
   } catch {
     // Not running under Tauri (dev browser) — ignore.
   }

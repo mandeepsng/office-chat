@@ -6,6 +6,8 @@ export interface NotificationPayload {
   body: string;
   /** Room to open when the user clicks the notification. */
   roomId?: string;
+  /** Windows toast sound: "IM" | "Default" | "Mail" | "Silent". */
+  sound?: string;
 }
 
 /** Abstraction so push delivery can be swapped in later without UI changes. */
@@ -28,6 +30,7 @@ class NativeNotificationService implements NotificationService {
         title: payload.title,
         body: payload.body,
         roomId: payload.roomId ?? null,
+        sound: payload.sound ?? null,
       });
     } catch (err) {
       // Running in a plain browser (dev) — degrade gracefully.

@@ -22,10 +22,19 @@ pub fn show_notification<R: Runtime>(
     title: String,
     body: String,
     room_id: Option<String>,
+    sound: Option<String>,
 ) {
     #[cfg(windows)]
     {
         use tauri_winrt_notification::{Duration, Sound, Toast};
+
+        // Map the user's toast-sound preference; "Silent" (or None) plays nothing.
+        let toast_sound = match sound.as_deref() {
+            Some("Silent") => None,
+            Some("Default") => Some(Sound::Default),
+            Some("Mail") => Some(Sound::Mail),
+            _ => Some(Sound::IM),
+        };
 
         // In dev the app runs unpackaged, so it has no registered
         // AppUserModelID and Windows silently discards the toast unless we
@@ -43,8 +52,7 @@ pub fn show_notification<R: Runtime>(
             .title(&title)
             .text1(&body)
             .duration(Duration::Short)
-            // Windows' instant-message chime — light and chat-appropriate.
-            .sound(Some(Sound::IM))
+            .sound(toast_sound)
             .on_activated(move |_action| {
                 // A plain body click carries no activation argument, so we
                 // forward the room captured when the toast was created.
@@ -60,8 +68,9 @@ pub fn show_notification<R: Runtime>(
 
     #[cfg(not(windows))]
     {
-        // Click-to-open isn't wired on macOS/Linux yet; show a plain toast.
-        let _ = (&app, &room_id);
+        // Click-to-open and per-sound choice aren't wired on macOS/Linux yet;
+        // show a plain toast with the OS default sound.
+        let _ = (&app, &room_id, &sound);
         let mut toast = notify_rust::Notification::new();
         toast.summary(&title).body(&body);
         if let Err(err) = toast.show() {

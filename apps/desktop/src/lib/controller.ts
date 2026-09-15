@@ -13,8 +13,9 @@ import { config, detectPlatform } from "./config";
 import { store } from "./storage";
 import { notifications, onNotificationClick } from "./notifications";
 import { playIncoming, playSend } from "./sounds";
-import { setUnreadBadge, flashWindow } from "./badge";
+import { setUnreadBadge, flashWindow, onToggleDnd } from "./badge";
 import { unread, bumpUnread, clearUnread } from "./stores/unread.svelte";
+import { settings, toggleDnd } from "./stores/settings.svelte";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WsClient } from "./ws/client";
 import type { ChatMessage, Identity } from "./types";
@@ -56,6 +57,8 @@ class Controller {
     this.trackFocus();
     // Clicking a message notification brings the app forward and opens its room.
     void onNotificationClick((roomId) => this.focusRoom(roomId));
+    // The tray's "Do Not Disturb" entry toggles the same setting as the UI.
+    void onToggleDnd(() => toggleDnd());
     this.wireEvents();
 
     const identity = store.getIdentity();
@@ -162,7 +165,7 @@ class Controller {
       status: "pending",
     };
     addMessage(optimistic, "pending");
-    playSend();
+    if (!settings.dnd && settings.soundsEnabled) playSend();
     this.client.send(ClientEvents.MessageSend, {
       roomId,
       clientMessageId,
@@ -344,19 +347,22 @@ class Controller {
     if (isActive && this.windowFocused) {
       // Chat is open and focused, so the toast is suppressed — play a quiet
       // in-app sound instead so the user still notices the message.
-      playIncoming();
+      if (!settings.dnd && settings.soundsEnabled) playIncoming();
       this.markReadLatest(message.roomId);
     } else {
-      // Suppress notifications only for the focused, currently-open room.
-      void notifications.notify({
-        title: userName(message.senderId),
-        body: message.messageType === "gif" ? "Sent a GIF" : message.content,
-        roomId: message.roomId,
-      });
-      // Track it as unread and nudge the taskbar for attention.
+      // Track it as unread regardless (the pill/badge is passive).
       bumpUnread(message.roomId);
       this.syncBadge();
-      void flashWindow();
+      // Do Not Disturb silences toasts and the taskbar flash entirely.
+      if (!settings.dnd && settings.notificationsEnabled) {
+        void notifications.notify({
+          title: userName(message.senderId),
+          body: message.messageType === "gif" ? "Sent a GIF" : message.content,
+          roomId: message.roomId,
+          sound: settings.toastSound,
+        });
+        void flashWindow();
+      }
     }
   }
 

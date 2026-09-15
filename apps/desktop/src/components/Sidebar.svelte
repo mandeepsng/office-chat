@@ -4,6 +4,7 @@
   import { auth } from "../lib/stores/auth.svelte";
   import { rooms } from "../lib/stores/rooms.svelte";
   import { unread } from "../lib/stores/unread.svelte";
+  import { settings, settingsUi } from "../lib/stores/settings.svelte";
   import { directory, isOnline } from "../lib/stores/directory.svelte";
   import { toggleTheme, theme } from "../lib/stores/theme.svelte";
   import { autostart, toggleAutostart } from "../lib/stores/autostart.svelte";
@@ -68,6 +69,15 @@
     {/if}
     <button class="icon-btn" title="Toggle theme" onclick={toggleTheme}>
       {theme.value === "dark" ? "☀️" : "🌙"}
+    </button>
+    <button
+      class="icon-btn"
+      class:active={settings.dnd}
+      title={settings.dnd ? "Do Not Disturb: on" : "Settings"}
+      aria-label="Settings"
+      onclick={() => (settingsUi.open = true)}
+    >
+      {settings.dnd ? "🔕" : "⚙️"}
     </button>
   </header>
 

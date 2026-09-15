@@ -3,6 +3,8 @@
 //! (e.g. when the chat is already open); background message sounds come from the
 //! native OS toast instead (see `notify.rs`).
 
+import { settings } from "./stores/settings.svelte";
+
 let ctx: AudioContext | null = null;
 
 /** Lazily create the shared AudioContext, resuming it if the browser suspended it. */
@@ -33,6 +35,10 @@ function blip(from: number, to: number, peak: number, dur: number): void {
   if (!ac) return;
   const now = ac.currentTime;
 
+  // Scale by the user's volume setting; bail out if effectively muted.
+  const level = peak * settings.volume;
+  if (level < 0.0002) return;
+
   const osc = ac.createOscillator();
   const gain = ac.createGain();
   osc.type = "sine";
@@ -41,7 +47,7 @@ function blip(from: number, to: number, peak: number, dur: number): void {
 
   // Fast attack, exponential decay — reads as a soft "pop" rather than a beep.
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(peak, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(level, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
   osc.connect(gain).connect(ac.destination);

@@ -23,8 +23,11 @@ version first.
 | **Single-instance lock** (P0) | `src-tauri/src/lib.rs` | ✅ |
 | **Tray unread badge + sidebar pills** (P1) | `src-tauri/src/tray.rs`, `src/lib/stores/unread.svelte.ts`, `src/lib/badge.ts`, `Sidebar.svelte` | ✅ |
 | **Taskbar flash / attention** (P2) | `src-tauri/src/tray.rs` (`flash_window`) | ✅ |
+| **Global hotkey** (P3) — Ctrl/Cmd+Shift+O toggles window | `src-tauri/src/lib.rs` | ✅ |
+| **Window state persistence** (P4) | `src-tauri/src/lib.rs` (`window-state` plugin) | ✅ |
+| **DND + sound/notification settings** (P5) | `src/lib/stores/settings.svelte.ts`, `Settings.svelte`, tray DND, `notify.rs` sound param | ✅ |
 
-**Installed plugins:** `notification`, `dialog`, `autostart`, `updater`, `process`, `single-instance`.
+**Installed plugins:** `notification`, `dialog`, `autostart`, `updater`, `process`, `single-instance`, `global-shortcut`, `window-state`.
 
 ---
 
