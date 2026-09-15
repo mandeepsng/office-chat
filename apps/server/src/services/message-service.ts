@@ -35,6 +35,13 @@ export class MessageService {
       }
     }
 
+    // Keep only mentions that are real members of the room (and not the
+    // sender), so a client can't make the server notify arbitrary users.
+    const members = new Set(this.repos.rooms.memberIds(input.roomId));
+    const mentions = [...new Set(input.mentions)].filter(
+      (id) => id !== senderId && members.has(id),
+    );
+
     const message: Message = {
       id: crypto.randomUUID(),
       roomId: input.roomId,
@@ -42,6 +49,7 @@ export class MessageService {
       content: input.content,
       messageType: input.messageType,
       replyToId: input.replyToId ?? null,
+      mentions,
       clientMessageId: input.clientMessageId,
       createdAt: new Date().toISOString(),
       updatedAt: null,

@@ -87,6 +87,41 @@ test("rejects sending to a room the user is not in", () => {
   assert.ok(["ROOM_NOT_FOUND", "NOT_ROOM_MEMBER"].includes(err.payload.code));
 });
 
+test("keeps @mentions of real room members", () => {
+  const h = makeHarness();
+  const a = h.authUser("A");
+  const b = h.authUser("B"); // both in Office General
+  const roomId = officeRoomId(a);
+  const bId = b.last(ServerEvents.AuthSuccess).payload.user.id;
+
+  a.send(ClientEvents.MessageSend, {
+    roomId,
+    clientMessageId: randomUUID(),
+    content: "@B look",
+    mentions: [bId],
+  });
+
+  assert.deepEqual(a.last(ServerEvents.MessageSent).payload.message.mentions, [bId]);
+  assert.deepEqual(b.last(ServerEvents.MessageNew).payload.message.mentions, [bId]);
+});
+
+test("drops mentions of users who are not room members", () => {
+  const h = makeHarness();
+  const a = h.authUser("A");
+  const roomId = officeRoomId(a);
+  const aId = a.last(ServerEvents.AuthSuccess).payload.user.id;
+
+  a.send(ClientEvents.MessageSend, {
+    roomId,
+    clientMessageId: randomUUID(),
+    // A stranger id plus the sender's own id — both should be filtered out.
+    content: "hi",
+    mentions: [randomUUID(), aId],
+  });
+
+  assert.deepEqual(a.last(ServerEvents.MessageSent).payload.message.mentions, []);
+});
+
 test("is idempotent for a repeated clientMessageId", () => {
   const h = makeHarness();
   const a = h.authUser("A");

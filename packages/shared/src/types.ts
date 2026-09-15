@@ -53,6 +53,8 @@ export interface Message {
   content: string;
   messageType: MessageType;
   replyToId: string | null;
+  /** User ids @mentioned in this message (validated against room membership). */
+  mentions: string[];
   /** Echoes the client-generated id so the sender can reconcile its optimistic copy. */
   clientMessageId: string | null;
   createdAt: string;

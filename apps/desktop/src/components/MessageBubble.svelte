@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { User } from "@office-chat/shared";
   import type { ChatMessage } from "../lib/types";
+  import { auth } from "../lib/stores/auth.svelte";
+  import { mentionParts } from "../lib/mentions";
 
   interface Props {
     message: ChatMessage;
@@ -15,6 +17,10 @@
   const MAX_AVATARS = 5;
   const shownReaders = $derived(seenBy.slice(0, MAX_AVATARS));
   const extraReaders = $derived(Math.max(0, seenBy.length - MAX_AVATARS));
+
+  const parts = $derived(
+    mentionParts(message.content, message.mentions ?? [], auth.identity?.userId ?? null),
+  );
 
   const time = $derived(
     new Date(message.createdAt).toLocaleTimeString([], {
@@ -43,8 +49,14 @@
       <span class="deleted">Message deleted</span>
     {:else if message.messageType === "gif"}
       <img class="gif" src={message.content} alt="GIF" loading="lazy" />
+    {:else if message.messageType === "image"}
+      <a href={message.content} target="_blank" rel="noreferrer">
+        <img class="gif" src={message.content} alt="Shared attachment" loading="lazy" />
+      </a>
     {:else}
-      <span class="text">{message.content}</span>
+      <span class="text">{#each parts as part}{#if part.mention}<span
+            class="mention"
+            class:self={part.self}>{part.text}</span>{:else}{part.text}{/if}{/each}</span>
     {/if}
 
     <span class="meta">
@@ -85,6 +97,16 @@
   .bubble.failed { outline: 1px solid var(--danger); }
   .sender { display: block; font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 2px; }
   .text { white-space: pre-wrap; word-break: break-word; }
+  .mention { color: var(--accent); font-weight: 600; }
+  .bubble.own .mention { color: inherit; font-weight: 700; text-decoration: underline; }
+  .mention.self {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-radius: 4px;
+    padding: 0 3px;
+    font-weight: 700;
+    text-decoration: none;
+  }
   .deleted { font-style: italic; color: var(--text-faint); }
   .gif { max-width: 220px; border-radius: 10px; display: block; }
   .meta {

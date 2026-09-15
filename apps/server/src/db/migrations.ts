@@ -47,6 +47,7 @@ export function runMigrations(db: DB): void {
       message_type      TEXT NOT NULL DEFAULT 'text',
       reply_to_id       TEXT,
       client_message_id TEXT,
+      mentions          TEXT,
       created_at        TEXT NOT NULL,
       updated_at        TEXT,
       deleted_at        TEXT
@@ -71,4 +72,10 @@ export function runMigrations(db: DB): void {
       ON messages(sender_id, client_message_id)
       WHERE client_message_id IS NOT NULL;
   `);
+
+  // Add the mentions column to databases created before @mentions existed.
+  const messageCols = db.prepare(`PRAGMA table_info(messages)`).all() as { name: string }[];
+  if (!messageCols.some((c) => c.name === "mentions")) {
+    db.exec(`ALTER TABLE messages ADD COLUMN mentions TEXT`);
+  }
 }

@@ -145,7 +145,7 @@ class Controller {
     });
   }
 
-  sendMessage(content: string, messageType: MessageType = "text"): void {
+  sendMessage(content: string, messageType: MessageType = "text", mentions: string[] = []): void {
     const roomId = rooms.activeRoomId;
     const identity = auth.identity;
     if (!roomId || !identity || !content.trim()) return;
@@ -158,6 +158,7 @@ class Controller {
       content: content.trim(),
       messageType,
       replyToId: null,
+      mentions,
       clientMessageId,
       createdAt: new Date().toISOString(),
       updatedAt: null,
@@ -171,12 +172,17 @@ class Controller {
       clientMessageId,
       content: optimistic.content,
       messageType,
+      mentions,
     });
     this.stopTyping();
   }
 
   sendGif(url: string): void {
     this.sendMessage(url, "gif");
+  }
+
+  sendImage(url: string): void {
+    this.sendMessage(url, "image");
   }
 
   createDirect(userId: string): void {
@@ -353,11 +359,21 @@ class Controller {
       // Track it as unread regardless (the pill/badge is passive).
       bumpUnread(message.roomId);
       this.syncBadge();
-      // Do Not Disturb silences toasts and the taskbar flash entirely.
-      if (!settings.dnd && settings.notificationsEnabled) {
+
+      const mentionsMe = !!auth.identity && message.mentions.includes(auth.identity.userId);
+      // Do Not Disturb silences everything. Otherwise a direct @mention is
+      // important enough to notify even if generic notifications are muted.
+      if (!settings.dnd && (settings.notificationsEnabled || mentionsMe)) {
+        const sender = userName(message.senderId);
+        const preview =
+          message.messageType === "gif"
+            ? "Sent a GIF"
+            : message.messageType === "image"
+              ? "Sent an image"
+              : message.content;
         void notifications.notify({
-          title: userName(message.senderId),
-          body: message.messageType === "gif" ? "Sent a GIF" : message.content,
+          title: mentionsMe ? `${sender} mentioned you 💬` : sender,
+          body: preview,
           roomId: message.roomId,
           sound: settings.toastSound,
         });

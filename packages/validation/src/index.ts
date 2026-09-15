@@ -73,6 +73,8 @@ export const messageSendSchema = z.object({
   content: nonEmpty(LIMITS.MESSAGE_MAX_LENGTH),
   messageType: messageTypeSchema.default("text"),
   replyToId: uuid.nullish(),
+  // @mentioned user ids; the server filters these to actual room members.
+  mentions: z.array(uuid).max(64).default([]),
 });
 
 export const messageEditSchema = z.object({

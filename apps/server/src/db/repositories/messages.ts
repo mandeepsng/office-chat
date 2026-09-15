@@ -9,6 +9,7 @@ interface MessageRow {
   message_type: string;
   reply_to_id: string | null;
   client_message_id: string | null;
+  mentions: string | null;
   created_at: string;
   updated_at: string | null;
   deleted_at: string | null;
@@ -21,11 +22,23 @@ const toMessage = (r: MessageRow): Message => ({
   content: r.content,
   messageType: r.message_type as MessageType,
   replyToId: r.reply_to_id,
+  mentions: parseMentions(r.mentions),
   clientMessageId: r.client_message_id,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at,
 });
+
+/** Mentions are stored as a JSON array of user ids; tolerate legacy nulls. */
+function parseMentions(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 export interface HistoryPage {
   messages: Message[];
@@ -39,11 +52,12 @@ export class MessagesRepository {
     this.db
       .prepare(
         `INSERT INTO messages
-           (id, room_id, sender_id, content, message_type, reply_to_id, client_message_id, created_at, updated_at, deleted_at)
+           (id, room_id, sender_id, content, message_type, reply_to_id, mentions, client_message_id, created_at, updated_at, deleted_at)
          VALUES
-           (@id, @roomId, @senderId, @content, @messageType, @replyToId, @clientMessageId, @createdAt, @updatedAt, @deletedAt)`,
+           (@id, @roomId, @senderId, @content, @messageType, @replyToId, @mentions, @clientMessageId, @createdAt, @updatedAt, @deletedAt)`,
       )
-      .run(m);
+      // better-sqlite3 can't bind arrays, so mentions are serialized to JSON.
+      .run({ ...m, mentions: JSON.stringify(m.mentions ?? []) });
     return m;
   }
 
