@@ -16,12 +16,13 @@ module.exports = {
     {
       name: "officechat",
 
-      // Run the server via pnpm so it uses the workspace + loads apps/server/.env
-      // (pnpm runs the script with cwd = apps/server, which dotenv needs).
-      script: "pnpm",
-      args: "--filter @office-chat/server start",
-      interpreter: "none", // pnpm is a binary, don't run it through node
-      cwd: path.join(__dirname, ".."), // repo root
+      // Run tsx directly via node. Going through pnpm here breaks under PM2:
+      // it hands `--filter` to bash instead of pnpm and the process crash-loops.
+      // cwd = apps/server so dotenv finds apps/server/.env and tsx resolves.
+      script: "src/index.ts",
+      interpreter: "node",
+      interpreter_args: "--import tsx",
+      cwd: path.join(__dirname, "..", "apps", "server"),
 
       // --- Crash handling ---
       autorestart: true, // restart if the process exits unexpectedly
