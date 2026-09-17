@@ -17,6 +17,11 @@ export function roomMessages(roomId: string): ChatMessage[] {
   return messages.byRoom[roomId] ?? [];
 }
 
+/** Find a loaded message by id within a room (used to render reply quotes). */
+export function findMessage(roomId: string, id: string): ChatMessage | undefined {
+  return messages.byRoom[roomId]?.find((m) => m.id === id);
+}
+
 /** Append a message, de-duplicating by id or client id (idempotent). */
 export function addMessage(message: Message, status: MessageStatus): void {
   const list = ensureRoom(message.roomId);

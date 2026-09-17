@@ -66,14 +66,53 @@ pub fn show_notification<R: Runtime>(
         }
     }
 
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
     {
-        // Click-to-open and per-sound choice aren't wired on macOS/Linux yet;
-        // show a plain toast with the OS default sound.
+        use notify_rust::{Notification, Timeout};
+        // Linux uses the freedesktop sound theme rather than our Windows enum.
+        let _ = &sound;
+
+        let result = Notification::new()
+            .summary(&title)
+            .body(&body)
+            .appname("OfficeChat")
+            // Freedesktop IM sound; plays on desktops shipping the sound theme.
+            .sound_name("message-new-instant")
+            // The default daemon timeout is very short — keep it up longer so it
+            // isn't missed and there's time to click it. (GNOME still routes
+            // normal notifications to its tray after a few seconds.)
+            .timeout(Timeout::Milliseconds(12_000))
+            // "default" is the action fired when the notification body is clicked.
+            .action("default", "Open")
+            .show();
+
+        match result {
+            Ok(handle) => {
+                let app_handle = app.clone();
+                let room = room_id.clone();
+                // wait_for_action blocks until the notification is clicked or
+                // closed, so run it off-thread and forward clicks to the app.
+                std::thread::spawn(move || {
+                    handle.wait_for_action(|action| {
+                        if action == "default" {
+                            let _ = app_handle.emit(NOTIFICATION_CLICK_EVENT, room);
+                        }
+                    });
+                });
+            }
+            Err(err) => eprintln!("[notify] failed to show notification: {err}"),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // Click-to-open isn't wired on macOS yet; show a plain toast.
         let _ = (&app, &room_id, &sound);
-        let mut toast = notify_rust::Notification::new();
-        toast.summary(&title).body(&body);
-        if let Err(err) = toast.show() {
+        if let Err(err) = notify_rust::Notification::new()
+            .summary(&title)
+            .body(&body)
+            .show()
+        {
             eprintln!("[notify] failed to show notification: {err}");
         }
     }

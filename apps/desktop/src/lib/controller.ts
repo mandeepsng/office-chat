@@ -145,7 +145,12 @@ class Controller {
     });
   }
 
-  sendMessage(content: string, messageType: MessageType = "text", mentions: string[] = []): void {
+  sendMessage(
+    content: string,
+    messageType: MessageType = "text",
+    mentions: string[] = [],
+    replyToId: string | null = null,
+  ): void {
     const roomId = rooms.activeRoomId;
     const identity = auth.identity;
     if (!roomId || !identity || !content.trim()) return;
@@ -157,7 +162,7 @@ class Controller {
       senderId: identity.userId,
       content: content.trim(),
       messageType,
-      replyToId: null,
+      replyToId,
       mentions,
       clientMessageId,
       createdAt: new Date().toISOString(),
@@ -173,6 +178,7 @@ class Controller {
       content: optimistic.content,
       messageType,
       mentions,
+      ...(replyToId ? { replyToId } : {}),
     });
     this.stopTyping();
   }

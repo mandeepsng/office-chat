@@ -4,7 +4,8 @@
   import { controller } from "../lib/controller";
   import { rooms } from "../lib/stores/rooms.svelte";
   import { auth } from "../lib/stores/auth.svelte";
-  import { directory } from "../lib/stores/directory.svelte";
+  import { directory, userName } from "../lib/stores/directory.svelte";
+  import { replyState, clearReplyTarget } from "../lib/stores/reply.svelte";
   import { uploadImage } from "../lib/upload";
   import type { Gif } from "../lib/giphy";
   import EmojiPicker from "./EmojiPicker.svelte";
@@ -116,10 +117,20 @@
     const ids = [
       ...new Set(picked.filter((m) => value.includes(`@${m.name}`)).map((m) => m.id)),
     ];
-    controller.sendMessage(value, "text", ids);
+    controller.sendMessage(value, "text", ids, replyState.target?.id ?? null);
     text = "";
     picked = [];
     mentionOpen = false;
+    clearReplyTarget();
+  }
+
+  /** Short preview of the message being replied to. */
+  function replyPreview(): string {
+    const t = replyState.target;
+    if (!t) return "";
+    if (t.messageType === "gif") return "GIF";
+    if (t.messageType === "image") return "Image";
+    return t.content;
   }
 
   function onKeydown(event: KeyboardEvent) {
@@ -152,6 +163,7 @@
       send();
     } else if (event.key === "Escape") {
       open = null;
+      clearReplyTarget();
     } else {
       controller.handleTyping();
     }
@@ -170,6 +182,16 @@
 </script>
 
 <footer class="composer">
+  {#if replyState.target}
+    <div class="reply-bar">
+      <div class="reply-info">
+        <span class="reply-to">Replying to <strong>{userName(replyState.target.senderId)}</strong></span>
+        <span class="reply-preview">{replyPreview()}</span>
+      </div>
+      <button class="reply-cancel" aria-label="Cancel reply" onclick={clearReplyTarget}>✕</button>
+    </div>
+  {/if}
+
   {#if open === "emoji"}
     <div class="picker-anchor emoji">
       <EmojiPicker onpick={insertEmoji} onclose={() => (open = null)} />
@@ -320,6 +342,39 @@
     font-size: 15px;
   }
   .gif-btn { font-weight: 700; font-size: 12px; }
+  .reply-bar {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+  }
+  .reply-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .reply-to { font-size: 12px; color: var(--text-muted); }
+  .reply-to strong { color: var(--accent); }
+  .reply-preview {
+    font-size: 12px;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .reply-cancel {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+  .reply-cancel:hover { opacity: 1; }
   .upload-status {
     position: absolute;
     top: -22px;
