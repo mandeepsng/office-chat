@@ -197,6 +197,11 @@ class Controller {
     this.client.send(ClientEvents.MessageEdit, { messageId, content: content.trim() });
   }
 
+  /** Delete one of your own messages; the server broadcasts message:deleted. */
+  deleteMessage(messageId: string): void {
+    this.client.send(ClientEvents.MessageDelete, { messageId });
+  }
+
   createDirect(userId: string): void {
     this.client.send(ClientEvents.RoomCreate, { type: "direct", memberIds: [userId] });
   }

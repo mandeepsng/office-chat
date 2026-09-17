@@ -7,6 +7,7 @@
   import { userName } from "../lib/stores/directory.svelte";
   import { setReplyTarget } from "../lib/stores/reply.svelte";
   import { setEditTarget } from "../lib/stores/edit.svelte";
+  import { controller } from "../lib/controller";
 
   interface Props {
     message: ChatMessage;
@@ -28,6 +29,29 @@
 
   // Only your own, non-deleted text messages can be edited.
   const editable = $derived(own && message.messageType === "text" && !message.deletedAt);
+  // Any of your own, non-deleted messages can be deleted.
+  const deletable = $derived(own && !message.deletedAt);
+
+  // Any non-deleted text message can be copied (yours or others').
+  const copyable = $derived(message.messageType === "text" && !message.deletedAt);
+
+  let confirmingDelete = $state(false);
+  let copied = $state(false);
+
+  function confirmDelete() {
+    controller.deleteMessage(message.id);
+    confirmingDelete = false;
+  }
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      copied = true;
+      setTimeout(() => (copied = false), 1200);
+    } catch {
+      // Clipboard unavailable — ignore.
+    }
+  }
 
   // The message this one replies to (if it's still loaded in the room).
   const repliedTo = $derived(
@@ -72,10 +96,21 @@
 <div class="message" class:own id={`msg-${message.id}`}>
   {#if !message.deletedAt}
     <div class="actions">
-      {#if editable}
-        <button class="act-btn" aria-label="Edit" title="Edit" onclick={() => setEditTarget(message)}>✏️</button>
+      {#if confirmingDelete}
+        <button class="act-btn danger" aria-label="Confirm delete" title="Delete" onclick={confirmDelete}>✓</button>
+        <button class="act-btn" aria-label="Cancel delete" title="Cancel" onclick={() => (confirmingDelete = false)}>✕</button>
+      {:else}
+        {#if copyable}
+          <button class="act-btn" aria-label="Copy" title={copied ? "Copied!" : "Copy"} onclick={copyText}>{copied ? "✓" : "⧉"}</button>
+        {/if}
+        {#if editable}
+          <button class="act-btn" aria-label="Edit" title="Edit" onclick={() => setEditTarget(message)}>✏️</button>
+        {/if}
+        <button class="act-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
+        {#if deletable}
+          <button class="act-btn" aria-label="Delete" title="Delete" onclick={() => (confirmingDelete = true)}>🗑️</button>
+        {/if}
       {/if}
-      <button class="act-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
     </div>
   {/if}
 
@@ -158,6 +193,7 @@
     line-height: 1;
   }
   .act-btn:hover { background: var(--hover); }
+  .act-btn.danger { color: var(--danger); border-color: var(--danger); }
   .edited { font-style: italic; opacity: 0.7; }
   .quote {
     display: flex;
