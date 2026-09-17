@@ -38,7 +38,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 | A2 | ✅ **Edit message** *(done)* | S | ✅ `message:edit` exists | Hover own msg → ✏️ → composer; "edited" tag |
 | A3 | ✅ **Delete message** *(done)* | S | ✅ `message:delete` exists | Hover → 🗑️ → inline confirm; "Message deleted" renders |
 | A4 | ✅ **Copy message text** *(done)* | S | ✅ n/a | Hover → ⧉ copy; ✓ feedback |
-| A5 | **Emoji reactions** ❤️👍😂 | M | 🔴 reactions table + events | Most fun; react + live counts |
+| A5 | ✅ **Emoji reactions** ❤️👍😂 *(done)* | M | ✅ reactions table + events | React via 😊; live chips + toggle |
 
 ### B. Rich content
 

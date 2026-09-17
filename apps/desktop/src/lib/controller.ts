@@ -5,6 +5,7 @@ import {
   type Device,
   type Message,
   type MessageType,
+  type Reaction,
   type ReadReceipt,
   type Room,
   type User,
@@ -24,6 +25,7 @@ import { auth } from "./stores/auth.svelte";
 import { rooms, upsertRoom } from "./stores/rooms.svelte";
 import { directory, setOnline, setUsers, userName } from "./stores/directory.svelte";
 import { setReader, setRoomReads } from "./stores/receipts.svelte";
+import { setReactions, seedReactions } from "./stores/reactions.svelte";
 import {
   addMessage,
   confirmMessage,
@@ -202,6 +204,11 @@ class Controller {
     this.client.send(ClientEvents.MessageDelete, { messageId });
   }
 
+  /** Add/remove an emoji reaction on any message in the current room. */
+  toggleReaction(messageId: string, emoji: string): void {
+    this.client.send(ClientEvents.ReactionToggle, { messageId, emoji });
+  }
+
   createDirect(userId: string): void {
     this.client.send(ClientEvents.RoomCreate, { type: "direct", memberIds: [userId] });
   }
@@ -274,16 +281,23 @@ class Controller {
     this.client.on(ServerEvents.RoomUpdated, (p) => upsertRoom((p as { room: Room }).room));
 
     this.client.on(ServerEvents.RoomHistory, (p) => {
-      const { roomId, messages: older, hasMore, reads } = p as {
+      const { roomId, messages: older, hasMore, reads, reactions: reax } = p as {
         roomId: string;
         messages: Message[];
         hasMore: boolean;
         reads?: ReadReceipt[];
+        reactions?: Reaction[];
       };
       prependHistory(roomId, older, hasMore);
       if (reads) setRoomReads(roomId, reads);
+      if (reax) seedReactions(reax);
       this.loadedRooms.add(roomId);
       store.cacheMessages(roomId, roomMessages(roomId));
+    });
+
+    this.client.on(ServerEvents.ReactionUpdated, (p) => {
+      const { messageId, reactions: list } = p as { messageId: string; reactions: Reaction[] };
+      setReactions(messageId, list);
     });
 
     this.client.on(ServerEvents.MessageSent, (p) => {

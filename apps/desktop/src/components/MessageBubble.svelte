@@ -8,6 +8,8 @@
   import { setReplyTarget } from "../lib/stores/reply.svelte";
   import { setEditTarget } from "../lib/stores/edit.svelte";
   import { controller } from "../lib/controller";
+  import { reactionGroups } from "../lib/stores/reactions.svelte";
+  import EmojiPicker from "./EmojiPicker.svelte";
 
   interface Props {
     message: ChatMessage;
@@ -35,8 +37,17 @@
   // Any non-deleted text message can be copied (yours or others').
   const copyable = $derived(message.messageType === "text" && !message.deletedAt);
 
+  const ownId = $derived(auth.identity?.userId ?? "");
+  const groups = $derived(reactionGroups(message.id, ownId));
+
   let confirmingDelete = $state(false);
   let copied = $state(false);
+  let reacting = $state(false);
+
+  function react(emoji: string) {
+    controller.toggleReaction(message.id, emoji);
+    reacting = false;
+  }
 
   function confirmDelete() {
     controller.deleteMessage(message.id);
@@ -106,11 +117,18 @@
         {#if editable}
           <button class="act-btn" aria-label="Edit" title="Edit" onclick={() => setEditTarget(message)}>✏️</button>
         {/if}
+        <button class="act-btn" aria-label="React" title="React" onclick={() => (reacting = !reacting)}>😊</button>
         <button class="act-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
         {#if deletable}
           <button class="act-btn" aria-label="Delete" title="Delete" onclick={() => (confirmingDelete = true)}>🗑️</button>
         {/if}
       {/if}
+    </div>
+  {/if}
+
+  {#if reacting}
+    <div class="react-anchor" class:own>
+      <EmojiPicker onpick={react} onclose={() => (reacting = false)} />
     </div>
   {/if}
 
@@ -150,6 +168,22 @@
       {#if own && tick}<span class="tick" class:read={message.status === "read"}>{tick}</span>{/if}
     </span>
   </div>
+
+  {#if groups.length > 0}
+    <div class="reactions">
+      {#each groups as g (g.emoji)}
+        <button
+          class="reaction-chip"
+          class:mine={g.mine}
+          title={g.mine ? "Remove reaction" : "React"}
+          onclick={() => react(g.emoji)}
+        >
+          <span class="reaction-emoji">{g.emoji}</span>
+          <span class="reaction-count">{g.count}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   {#if own && seenBy.length > 0}
     <div class="seen" aria-label={`Seen by ${seenBy.map((u) => u.name).join(", ")}`}>
@@ -195,6 +229,28 @@
   .act-btn:hover { background: var(--hover); }
   .act-btn.danger { color: var(--danger); border-color: var(--danger); }
   .edited { font-style: italic; opacity: 0.7; }
+  .react-anchor { position: absolute; top: 28px; z-index: 50; }
+  .message:not(.own) .react-anchor { left: 6px; }
+  .message.own .react-anchor { right: 6px; }
+  .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .message.own .reactions { justify-content: flex-end; }
+  .reaction-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 18px;
+  }
+  .reaction-chip:hover { background: var(--hover); }
+  .reaction-chip.mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
+  .reaction-emoji { font-size: 13px; }
+  .reaction-count { font-weight: 600; }
   .quote {
     display: flex;
     flex-direction: column;

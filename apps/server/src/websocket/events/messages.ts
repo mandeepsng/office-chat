@@ -4,6 +4,7 @@ import {
   messageEditSchema,
   messageReadSchema,
   messageSendSchema,
+  reactionToggleSchema,
 } from "@office-chat/validation";
 import { AppError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
@@ -51,6 +52,17 @@ export function handleMessageDelete(ec: EventContext, payload: unknown): void {
   ec.hub.broadcastToRoom(message.roomId, ServerEvents.MessageDeleted, {
     messageId: message.id,
     roomId: message.roomId,
+  });
+}
+
+export function handleReactionToggle(ec: EventContext, payload: unknown): void {
+  const userId = ec.conn.userId!;
+  const input = parseOrThrow(reactionToggleSchema, payload);
+  const { roomId, reactions } = ec.app.messageService.toggleReaction(userId, input);
+  // Broadcast to everyone in the room (including the reactor, to confirm).
+  ec.hub.broadcastToRoom(roomId, ServerEvents.ReactionUpdated, {
+    messageId: input.messageId,
+    reactions,
   });
 }
 

@@ -15,6 +15,8 @@ export const ClientEvents = {
   MessageDelete: "message:delete",
   MessageRead: "message:read",
 
+  ReactionToggle: "reaction:toggle",
+
   TypingStart: "typing:start",
   TypingStop: "typing:stop",
 
@@ -35,6 +37,8 @@ export const ServerEvents = {
   MessageDeleted: "message:deleted",
   MessageSent: "message:sent",
   MessageRead: "message:read",
+
+  ReactionUpdated: "reaction:updated",
 
   TypingStart: "typing:start",
   TypingStop: "typing:stop",

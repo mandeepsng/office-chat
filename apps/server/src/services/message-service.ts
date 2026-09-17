@@ -1,9 +1,11 @@
 import { ErrorCodes } from "@office-chat/shared";
 import type { Message } from "@office-chat/shared";
+import type { Reaction } from "@office-chat/shared";
 import type {
   MessageEditInput,
   MessageReadInput,
   MessageSendInput,
+  ReactionToggleInput,
 } from "@office-chat/validation";
 import type { Repositories } from "../db";
 import { AppError } from "../utils/errors";
@@ -77,6 +79,21 @@ export class MessageService {
       throw new AppError(ErrorCodes.Forbidden, "You can only delete your own messages");
     }
     return this.repos.messages.softDelete(messageId, new Date().toISOString())!;
+  }
+
+  /** Toggle a user's emoji reaction on a message; returns the message's room
+   *  and the message's full, updated reaction list for broadcasting. */
+  toggleReaction(
+    userId: string,
+    input: ReactionToggleInput,
+  ): { roomId: string; reactions: Reaction[] } {
+    const message = this.repos.messages.getById(input.messageId);
+    if (!message || message.deletedAt) {
+      throw new AppError(ErrorCodes.MessageNotFound, "Message not found");
+    }
+    this.rooms.requireMembership(message.roomId, userId);
+    this.repos.reactions.toggle(input.messageId, userId, input.emoji, new Date().toISOString());
+    return { roomId: message.roomId, reactions: this.repos.reactions.forMessage(input.messageId) };
   }
 
   markRead(userId: string, input: MessageReadInput): void {

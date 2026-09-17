@@ -62,6 +62,13 @@ export interface Message {
   deletedAt: string | null;
 }
 
+/** One user's emoji reaction to a message. */
+export interface Reaction {
+  messageId: string;
+  userId: string;
+  emoji: string;
+}
+
 /** Who has read up to which message in a room (group "seen by" avatars). */
 export interface ReadReceipt {
   userId: string;
