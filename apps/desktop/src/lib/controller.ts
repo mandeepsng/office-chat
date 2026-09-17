@@ -191,6 +191,12 @@ class Controller {
     this.sendMessage(url, "image");
   }
 
+  /** Edit one of your own text messages; the server broadcasts message:updated. */
+  editMessage(messageId: string, content: string): void {
+    if (!content.trim()) return;
+    this.client.send(ClientEvents.MessageEdit, { messageId, content: content.trim() });
+  }
+
   createDirect(userId: string): void {
     this.client.send(ClientEvents.RoomCreate, { type: "direct", memberIds: [userId] });
   }

@@ -6,6 +6,7 @@
   import { findMessage } from "../lib/stores/messages.svelte";
   import { userName } from "../lib/stores/directory.svelte";
   import { setReplyTarget } from "../lib/stores/reply.svelte";
+  import { setEditTarget } from "../lib/stores/edit.svelte";
 
   interface Props {
     message: ChatMessage;
@@ -24,6 +25,9 @@
   const parts = $derived(
     mentionParts(message.content, message.mentions ?? [], auth.identity?.userId ?? null),
   );
+
+  // Only your own, non-deleted text messages can be edited.
+  const editable = $derived(own && message.messageType === "text" && !message.deletedAt);
 
   // The message this one replies to (if it's still loaded in the room).
   const repliedTo = $derived(
@@ -67,7 +71,12 @@
 
 <div class="message" class:own id={`msg-${message.id}`}>
   {#if !message.deletedAt}
-    <button class="reply-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
+    <div class="actions">
+      {#if editable}
+        <button class="act-btn" aria-label="Edit" title="Edit" onclick={() => setEditTarget(message)}>✏️</button>
+      {/if}
+      <button class="act-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
+    </div>
   {/if}
 
   <div class="bubble" class:own class:failed={message.status === "failed"}>
@@ -101,6 +110,7 @@
     <span class="meta">
       {#if message.status === "pending"}<span class="pending">Sending…</span>{/if}
       {#if message.status === "failed"}<span class="fail">Failed</span>{/if}
+      {#if message.updatedAt && !message.deletedAt}<span class="edited">edited</span>{/if}
       <time>{time}</time>
       {#if own && tick}<span class="tick" class:read={message.status === "read"}>{tick}</span>{/if}
     </span>
@@ -124,10 +134,19 @@
     0%, 100% { background: transparent; }
     30% { background: var(--hover); }
   }
-  .reply-btn {
+  .actions {
     position: absolute;
     top: 2px;
+    display: flex;
+    gap: 4px;
     opacity: 0;
+    transition: opacity 0.12s ease;
+    z-index: 2;
+  }
+  .message:not(.own) .actions { right: 6px; }
+  .message.own .actions { left: 6px; }
+  .message:hover .actions { opacity: 1; }
+  .act-btn {
     width: 26px;
     height: 26px;
     border: 1px solid var(--border);
@@ -135,13 +154,11 @@
     background: var(--surface);
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 13px;
-    transition: opacity 0.12s ease;
-    z-index: 2;
+    font-size: 12px;
+    line-height: 1;
   }
-  .message:not(.own) .reply-btn { right: 6px; }
-  .message.own .reply-btn { left: 6px; }
-  .message:hover .reply-btn { opacity: 1; }
+  .act-btn:hover { background: var(--hover); }
+  .edited { font-style: italic; opacity: 0.7; }
   .quote {
     display: flex;
     flex-direction: column;

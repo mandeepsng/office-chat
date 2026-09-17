@@ -6,6 +6,7 @@
   import { auth } from "../lib/stores/auth.svelte";
   import { directory, userName } from "../lib/stores/directory.svelte";
   import { replyState, clearReplyTarget } from "../lib/stores/reply.svelte";
+  import { editState, clearEditTarget } from "../lib/stores/edit.svelte";
   import { uploadImage } from "../lib/upload";
   import type { Gif } from "../lib/giphy";
   import EmojiPicker from "./EmojiPicker.svelte";
@@ -110,9 +111,38 @@
     textarea.setSelectionRange(pos, pos);
   }
 
+  // Entering edit mode loads the message text into the composer (and drops any
+  // in-progress reply, since both modes share this input).
+  $effect(() => {
+    const target = editState.target;
+    if (target) {
+      clearReplyTarget();
+      text = target.content;
+      void tick().then(() => {
+        textarea?.focus();
+        const end = text.length;
+        textarea?.setSelectionRange(end, end);
+      });
+    }
+  });
+
+  function cancelEdit() {
+    clearEditTarget();
+    text = "";
+  }
+
   function send() {
     const value = text.trim();
     if (!value) return;
+
+    // Editing an existing message reuses the composer input.
+    if (editState.target) {
+      controller.editMessage(editState.target.id, value);
+      text = "";
+      clearEditTarget();
+      return;
+    }
+
     // Only keep mentions whose "@Name" survived edits, deduped by id.
     const ids = [
       ...new Set(picked.filter((m) => value.includes(`@${m.name}`)).map((m) => m.id)),
@@ -164,6 +194,7 @@
     } else if (event.key === "Escape") {
       open = null;
       clearReplyTarget();
+      if (editState.target) cancelEdit();
     } else {
       controller.handleTyping();
     }
@@ -182,7 +213,14 @@
 </script>
 
 <footer class="composer">
-  {#if replyState.target}
+  {#if editState.target}
+    <div class="reply-bar editing">
+      <div class="reply-info">
+        <span class="reply-to">✏️ Editing message</span>
+      </div>
+      <button class="reply-cancel" aria-label="Cancel edit" onclick={cancelEdit}>✕</button>
+    </div>
+  {:else if replyState.target}
     <div class="reply-bar">
       <div class="reply-info">
         <span class="reply-to">Replying to <strong>{userName(replyState.target.senderId)}</strong></span>
