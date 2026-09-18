@@ -71,10 +71,18 @@ export function markReadUpTo(roomId: string, messageId: string, ownUserId: strin
 /** Prepend an older page (history pagination). */
 export function prependHistory(roomId: string, older: Message[], hasMore: boolean): void {
   const list = ensureRoom(roomId);
-  const existingIds = new Set(list.map((m) => m.id));
-  const toAdd: ChatMessage[] = older
-    .filter((m) => !existingIds.has(m.id))
-    .map((m) => ({ ...m, status: "delivered" as MessageStatus }));
+  const byId = new Map(list.map((m) => [m.id, m]));
+  const toAdd: ChatMessage[] = [];
+  for (const m of older) {
+    const existing = byId.get(m.id);
+    if (existing) {
+      // Server is the source of truth for history — reconcile edits/deletions
+      // onto the (possibly stale) cached copy while keeping client status.
+      Object.assign(existing, m);
+    } else {
+      toAdd.push({ ...m, status: "delivered" });
+    }
+  }
   messages.byRoom[roomId] = [...toAdd, ...list];
   messages.hasMore[roomId] = hasMore;
 }

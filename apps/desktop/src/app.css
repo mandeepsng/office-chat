@@ -72,13 +72,23 @@ html, body { height: 100%; }
 
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla";
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
 
 button, input, textarea { font-family: inherit; font-size: 14px; }
+
+/* Twemoji images injected via {@html} — sized relative to surrounding text. */
+img.emoji {
+  height: 1.25em;
+  width: 1.25em;
+  margin: 0 0.05em;
+  vertical-align: -0.25em;
+  display: inline-block;
+}
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }

@@ -8,7 +8,8 @@
   import { setReplyTarget } from "../lib/stores/reply.svelte";
   import { setEditTarget } from "../lib/stores/edit.svelte";
   import { controller } from "../lib/controller";
-  import { reactionGroups } from "../lib/stores/reactions.svelte";
+  import { reactionGroups, type ReactionGroup } from "../lib/stores/reactions.svelte";
+  import { emojiHtml } from "../lib/twemoji";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   interface Props {
@@ -40,13 +41,36 @@
   const ownId = $derived(auth.identity?.userId ?? "");
   const groups = $derived(reactionGroups(message.id, ownId));
 
+  // Teams-style one-tap reactions shown in the hover toolbar.
+  const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+  const mineEmojis = $derived(new Set(groups.filter((g) => g.mine).map((g) => g.emoji)));
+
   let confirmingDelete = $state(false);
   let copied = $state(false);
   let reacting = $state(false);
+  let menuOpen = $state(false);
+  // URL of the image/GIF currently open in the full-screen viewer.
+  let viewer = $state<string | null>(null);
 
   function react(emoji: string) {
     controller.toggleReaction(message.id, emoji);
     reacting = false;
+  }
+
+  /** Names of everyone who reacted with an emoji, "You" first (Teams-style). */
+  function reactorNames(g: ReactionGroup): string {
+    const names = g.userIds.map((id) => (id === ownId ? "You" : userName(id)));
+    // Put "You" first if present.
+    names.sort((a, b) => (a === "You" ? -1 : b === "You" ? 1 : 0));
+    if (names.length <= 1) return names.join("");
+    const last = names[names.length - 1];
+    return `${names.slice(0, -1).join(", ")} and ${last}`;
+  }
+
+  function closeMenus() {
+    menuOpen = false;
+    reacting = false;
+    confirmingDelete = false;
   }
 
   function confirmDelete() {
@@ -105,24 +129,64 @@
 </script>
 
 <div class="message" class:own id={`msg-${message.id}`}>
+  <div class="bubble-wrap">
   {#if !message.deletedAt}
     <div class="actions">
-      {#if confirmingDelete}
-        <button class="act-btn danger" aria-label="Confirm delete" title="Delete" onclick={confirmDelete}>✓</button>
-        <button class="act-btn" aria-label="Cancel delete" title="Cancel" onclick={() => (confirmingDelete = false)}>✕</button>
-      {:else}
-        {#if copyable}
-          <button class="act-btn" aria-label="Copy" title={copied ? "Copied!" : "Copy"} onclick={copyText}>{copied ? "✓" : "⧉"}</button>
-        {/if}
-        {#if editable}
-          <button class="act-btn" aria-label="Edit" title="Edit" onclick={() => setEditTarget(message)}>✏️</button>
-        {/if}
-        <button class="act-btn" aria-label="React" title="React" onclick={() => (reacting = !reacting)}>😊</button>
-        <button class="act-btn" aria-label="Reply" title="Reply" onclick={() => setReplyTarget(message)}>↩</button>
-        {#if deletable}
-          <button class="act-btn" aria-label="Delete" title="Delete" onclick={() => (confirmingDelete = true)}>🗑️</button>
-        {/if}
+      {#each QUICK_REACTIONS as emoji (emoji)}
+        <button
+          class="quick reaction"
+          class:active={mineEmojis.has(emoji)}
+          aria-label={`React ${emoji}`}
+          title={`React ${emoji}`}
+          onclick={() => react(emoji)}
+        >{@html emojiHtml(emoji)}</button>
+      {/each}
+      <button
+        class="quick"
+        aria-label="More emoji"
+        title="More emoji"
+        onclick={() => { reacting = !reacting; menuOpen = false; }}
+      >➕</button>
+      <span class="divider"></span>
+      <button
+        class="quick"
+        aria-label="Reply"
+        title="Reply"
+        onclick={() => setReplyTarget(message)}
+      >↩</button>
+      {#if copyable || editable || deletable}
+        <button
+          class="quick"
+          aria-label="More actions"
+          title="More actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onclick={() => { menuOpen = !menuOpen; reacting = false; confirmingDelete = false; }}
+        >⋯</button>
       {/if}
+    </div>
+  {/if}
+
+  {#if menuOpen}
+    <div class="menu-anchor" class:own>
+      <button class="menu-backdrop" aria-label="Close menu" onclick={closeMenus}></button>
+      <div class="menu" role="menu">
+        {#if confirmingDelete}
+          <div class="menu-confirm">Delete this message?</div>
+          <button class="menu-item danger" role="menuitem" onclick={confirmDelete}>🗑️ Delete</button>
+          <button class="menu-item" role="menuitem" onclick={() => (confirmingDelete = false)}>Cancel</button>
+        {:else}
+          {#if copyable}
+            <button class="menu-item" role="menuitem" onclick={() => { copyText(); menuOpen = false; }}>⧉ {copied ? "Copied!" : "Copy"}</button>
+          {/if}
+          {#if editable}
+            <button class="menu-item" role="menuitem" onclick={() => { setEditTarget(message); menuOpen = false; }}>✏️ Edit</button>
+          {/if}
+          {#if deletable}
+            <button class="menu-item danger" role="menuitem" onclick={() => (confirmingDelete = true)}>🗑️ Delete</button>
+          {/if}
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -149,15 +213,17 @@
     {#if message.deletedAt}
       <span class="deleted">Message deleted</span>
     {:else if message.messageType === "gif"}
-      <img class="gif" src={message.content} alt="GIF" loading="lazy" />
+      <button class="media-btn" aria-label="Open GIF" onclick={() => (viewer = message.content)}>
+        <img class="gif" src={message.content} alt="GIF" loading="lazy" />
+      </button>
     {:else if message.messageType === "image"}
-      <a href={message.content} target="_blank" rel="noreferrer">
+      <button class="media-btn" aria-label="Open image" onclick={() => (viewer = message.content)}>
         <img class="gif" src={message.content} alt="Shared attachment" loading="lazy" />
-      </a>
+      </button>
     {:else}
       <span class="text">{#each parts as part}{#if part.mention}<span
             class="mention"
-            class:self={part.self}>{part.text}</span>{:else}{part.text}{/if}{/each}</span>
+            class:self={part.self}>{part.text}</span>{:else}{@html emojiHtml(part.text)}{/if}{/each}</span>
     {/if}
 
     <span class="meta">
@@ -168,6 +234,7 @@
       {#if own && tick}<span class="tick" class:read={message.status === "read"}>{tick}</span>{/if}
     </span>
   </div>
+  </div>
 
   {#if groups.length > 0}
     <div class="reactions">
@@ -175,11 +242,14 @@
         <button
           class="reaction-chip"
           class:mine={g.mine}
-          title={g.mine ? "Remove reaction" : "React"}
           onclick={() => react(g.emoji)}
         >
-          <span class="reaction-emoji">{g.emoji}</span>
+          <span class="reaction-emoji">{@html emojiHtml(g.emoji)}</span>
           <span class="reaction-count">{g.count}</span>
+          <span class="reactor-tip" role="tooltip">
+            <span class="reactor-emoji">{@html emojiHtml(g.emoji)}</span>
+            {reactorNames(g)}
+          </span>
         </button>
       {/each}
     </div>
@@ -195,6 +265,16 @@
   {/if}
 </div>
 
+<svelte:window onkeydown={(e) => { if (e.key === "Escape" && viewer) viewer = null; }} />
+
+{#if viewer}
+  <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lightbox-backdrop" aria-label="Close image" onclick={() => (viewer = null)}></button>
+    <img class="lightbox-img" src={viewer} alt="Full size" />
+    <button class="lightbox-close" aria-label="Close" onclick={() => (viewer = null)}>✕</button>
+  </div>
+{/if}
+
 <style>
   .message { display: flex; flex-direction: column; align-items: flex-start; margin: 3px 0; position: relative; }
   .message.own { align-items: flex-end; }
@@ -203,38 +283,101 @@
     0%, 100% { background: transparent; }
     30% { background: var(--hover); }
   }
+  /* Wrapper sized to the bubble so the hover toolbar can anchor to its edges. */
+  .bubble-wrap { position: relative; display: inline-block; max-width: 66%; }
+
+  /* Teams-style floating hover toolbar sitting just below the bubble. */
   .actions {
     position: absolute;
-    top: 2px;
+    top: calc(100% + 4px);
     display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.12s ease;
-    z-index: 2;
-  }
-  .message:not(.own) .actions { right: 6px; }
-  .message.own .actions { left: 6px; }
-  .message:hover .actions { opacity: 1; }
-  .act-btn {
-    width: 26px;
-    height: 26px;
-    border: 1px solid var(--border);
-    border-radius: 50%;
+    align-items: center;
+    gap: 1px;
+    padding: 2px 4px;
     background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-3px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 5;
+  }
+  .message:not(.own) .actions { left: 0; }
+  .message.own .actions { right: 0; }
+  .message:hover .actions,
+  .actions:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .quick {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 15px;
     line-height: 1;
+    display: grid;
+    place-items: center;
+    transition: background 0.1s ease, transform 0.1s ease;
   }
-  .act-btn:hover { background: var(--hover); }
-  .act-btn.danger { color: var(--danger); border-color: var(--danger); }
+  .quick:hover { background: var(--hover); }
+  /* Emoji reactions render larger and with a real colour-emoji font. */
+  .quick.reaction {
+    font-size: 20px;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+  }
+  .quick.reaction:hover { transform: scale(1.25); }
+  .quick.reaction.active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .divider { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
+
+  /* "More actions" dropdown menu, opening below the toolbar. */
+  .menu-anchor { position: absolute; top: calc(100% + 38px); z-index: 60; }
+  .message:not(.own) .menu-anchor { left: 0; }
+  .message.own .menu-anchor { right: 0; }
+  .menu-backdrop { position: fixed; inset: 0; z-index: 1; border: 0; padding: 0; background: transparent; cursor: default; }
+  .menu {
+    position: relative;
+    z-index: 2;
+    min-width: 156px;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+    display: flex;
+    flex-direction: column;
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+  .menu-item:hover { background: var(--hover); }
+  .menu-item.danger { color: var(--danger); }
+  .menu-confirm { padding: 8px 10px 4px; font-size: 12px; color: var(--text-muted); }
   .edited { font-style: italic; opacity: 0.7; }
-  .react-anchor { position: absolute; top: 28px; z-index: 50; }
-  .message:not(.own) .react-anchor { left: 6px; }
-  .message.own .react-anchor { right: 6px; }
+  .react-anchor { position: absolute; top: calc(100% + 38px); z-index: 50; }
+  .message:not(.own) .react-anchor { left: 0; }
+  .message.own .react-anchor { right: 0; }
   .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .message.own .reactions { justify-content: flex-end; }
   .reaction-chip {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 3px;
@@ -248,8 +391,46 @@
     line-height: 18px;
   }
   .reaction-chip:hover { background: var(--hover); }
+  /* Teams-style tooltip: who reacted, on hover. */
+  .reactor-tip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(3px);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    max-width: 240px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    background: var(--tooltip-bg, #1f2430);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.3;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 40;
+  }
+  .reaction-chip:hover .reactor-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .reactor-tip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--tooltip-bg, #1f2430);
+  }
+  .reactor-emoji { flex-shrink: 0; }
   .reaction-chip.mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
-  .reaction-emoji { font-size: 13px; }
+  .reaction-emoji {
+    font-size: 16px;
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+  }
   .reaction-count { font-weight: 600; }
   .quote {
     display: flex;
@@ -278,7 +459,7 @@
   .bubble.own .quote-text { color: inherit; opacity: 0.85; }
   .quote-missing { font-style: italic; cursor: default; }
   .bubble {
-    max-width: 66%;
+    max-width: 100%;
     padding: 8px 11px;
     border-radius: 14px;
     background: var(--bubble);
@@ -305,7 +486,57 @@
     text-decoration: none;
   }
   .deleted { font-style: italic; color: var(--text-faint); }
+  .media-btn {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: zoom-in;
+    display: block;
+    border-radius: 10px;
+    line-height: 0;
+  }
   .gif { max-width: 220px; border-radius: 10px; display: block; }
+
+  /* Full-screen image viewer. */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+  }
+  .lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: zoom-out;
+  }
+  .lightbox-img {
+    position: relative;
+    z-index: 1;
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 8px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .lightbox-close:hover { background: rgba(0, 0, 0, 0.8); }
   .meta {
     display: flex;
     align-items: center;

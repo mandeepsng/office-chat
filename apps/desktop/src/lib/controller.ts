@@ -308,9 +308,12 @@ class Controller {
 
     this.client.on(ServerEvents.MessageNew, (p) => this.onMessageNew((p as { message: Message }).message));
 
-    this.client.on(ServerEvents.MessageUpdated, (p) =>
-      updateMessage((p as { message: Message }).message),
-    );
+    this.client.on(ServerEvents.MessageUpdated, (p) => {
+      const message = (p as { message: Message }).message;
+      updateMessage(message);
+      // Keep the local cache in sync so an edit survives an app reload.
+      store.cacheMessages(message.roomId, roomMessages(message.roomId));
+    });
 
     this.client.on(ServerEvents.MessageDeleted, (p) => {
       const { messageId, roomId } = p as { messageId: string; roomId: string };
@@ -319,6 +322,8 @@ class Controller {
         msg.deletedAt = new Date().toISOString();
         msg.content = "";
       }
+      // Persist the deletion so the message doesn't reappear after a reload.
+      store.cacheMessages(roomId, roomMessages(roomId));
     });
 
     this.client.on(ServerEvents.MessageRead, (p) => {

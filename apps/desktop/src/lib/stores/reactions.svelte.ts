@@ -20,6 +20,8 @@ export interface ReactionGroup {
   count: number;
   /** Whether the current user reacted with this emoji. */
   mine: boolean;
+  /** Ids of everyone who reacted with this emoji (current user's id last). */
+  userIds: string[];
 }
 
 /** Aggregate a message's reactions into per-emoji chips for rendering. */
@@ -28,8 +30,9 @@ export function reactionGroups(messageId: string, ownUserId: string): ReactionGr
   if (!list || list.length === 0) return [];
   const map = new Map<string, ReactionGroup>();
   for (const r of list) {
-    const g = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false };
+    const g = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false, userIds: [] };
     g.count += 1;
+    g.userIds.push(r.userId);
     if (r.userId === ownUserId) g.mine = true;
     map.set(r.emoji, g);
   }

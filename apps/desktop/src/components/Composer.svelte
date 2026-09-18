@@ -15,21 +15,14 @@
   let text = $state("");
   let open = $state<null | "emoji" | "gif">(null);
   let textarea = $state<HTMLTextAreaElement>();
+  let fileInput = $state<HTMLInputElement>();
 
-  // Image paste upload state.
+  // Image upload state (shared by paste and gallery picker).
   let uploading = $state(false);
   let uploadError = $state(false);
 
-  async function onPaste(event: ClipboardEvent) {
-    const items = event.clipboardData?.items;
-    if (!items) return;
-    const image = Array.from(items).find((i) => i.type.startsWith("image/"));
-    if (!image) return; // let normal text paste proceed
-
-    event.preventDefault();
-    const file = image.getAsFile();
-    if (!file) return;
-
+  /** Upload one image file and send it as an image message. */
+  async function uploadAndSend(file: File) {
     uploading = true;
     uploadError = false;
     try {
@@ -42,6 +35,27 @@
     } finally {
       uploading = false;
     }
+  }
+
+  async function onPaste(event: ClipboardEvent) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    const image = Array.from(items).find((i) => i.type.startsWith("image/"));
+    if (!image) return; // let normal text paste proceed
+
+    event.preventDefault();
+    const file = image.getAsFile();
+    if (file) await uploadAndSend(file);
+  }
+
+  /** Pick one or more images from the gallery/file system and send them. */
+  async function onPickFiles(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const files = Array.from(input.files ?? []).filter((f) => f.type.startsWith("image/"));
+    for (const file of files) {
+      await uploadAndSend(file);
+    }
+    input.value = ""; // allow picking the same file again
   }
 
   // @mention autocomplete state.
@@ -269,6 +283,22 @@
     onclick={() => (open = open === "emoji" ? null : "emoji")}
   >😊</button>
 
+  <input
+    bind:this={fileInput}
+    class="file-input"
+    type="file"
+    accept="image/*"
+    multiple
+    onchange={onPickFiles}
+  />
+  <button
+    class="icon"
+    title="Upload image"
+    aria-label="Upload image from gallery"
+    onclick={() => fileInput?.click()}
+    disabled={uploading}
+  >🖼️</button>
+
   <textarea
     bind:this={textarea}
     bind:value={text}
@@ -380,6 +410,8 @@
     font-size: 15px;
   }
   .gif-btn { font-weight: 700; font-size: 12px; }
+  .icon:disabled { opacity: 0.5; cursor: not-allowed; }
+  .file-input { display: none; }
   .reply-bar {
     position: absolute;
     bottom: 100%;
