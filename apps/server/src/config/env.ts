@@ -27,6 +27,10 @@ export const env = {
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 8 * 1024 * 1024),
   nodeEnv: process.env.NODE_ENV ?? "development",
   logMessageContent: process.env.LOG_MESSAGE_CONTENT === "true",
+  // Server-side URL unfurling for link-preview cards. Off → the /unfurl endpoint
+  // returns { ok: false } and clients render nothing.
+  linkPreviewsEnabled: process.env.LINK_PREVIEWS_ENABLED !== "false",
+  linkPreviewTtlDays: Number(process.env.LINK_PREVIEW_TTL_DAYS ?? 7),
 } as const;
 
 export const isProduction = env.nodeEnv === "production";

@@ -61,6 +61,16 @@ export function runMigrations(db: DB): void {
       PRIMARY KEY (message_id, user_id, emoji)
     );
 
+    CREATE TABLE IF NOT EXISTS link_previews (
+      url          TEXT PRIMARY KEY,
+      ok           INTEGER NOT NULL,
+      title        TEXT,
+      description  TEXT,
+      image        TEXT,
+      site_name    TEXT,
+      fetched_at   TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS read_receipts (
       room_id           TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
       user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

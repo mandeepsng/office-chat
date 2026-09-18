@@ -12,6 +12,7 @@
   import { emojiHtml } from "../lib/twemoji";
   import { splitBlocks, renderInline } from "../lib/markdown";
   import { embedUrl, videoIdFromContent } from "../lib/youtube";
+  import { firstUrl, ensurePreview, previewOf } from "../lib/linkPreview.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   interface Props {
@@ -45,6 +46,15 @@
   const ytId = $derived(
     message.messageType === "youtube" ? videoIdFromContent(message.content) : null,
   );
+
+  // Link-preview card for text messages that contain a URL.
+  const linkUrl = $derived(
+    message.messageType === "text" && !message.deletedAt ? firstUrl(message.content) : null,
+  );
+  $effect(() => {
+    if (linkUrl) ensurePreview(linkUrl);
+  });
+  const linkPreview = $derived(linkUrl ? previewOf(linkUrl) : undefined);
 
   // Only your own, non-deleted text messages can be edited.
   const editable = $derived(own && message.messageType === "text" && !message.deletedAt);
@@ -258,6 +268,19 @@
             class="code-block"><code>{block.text}</code></pre>{:else}{#each block.parts as part}{#if part.mention}<span
                 class="mention"
                 class:self={part.self}>{part.text}</span>{:else}{@html renderInline(part.text)}{/if}{/each}{/if}{/each}</div>
+    {/if}
+
+    {#if linkPreview?.status === "done"}
+      <a class="link-card" href={linkPreview.data.url} target="_blank" rel="noreferrer">
+        {#if linkPreview.data.image}
+          <img class="link-img" src={linkPreview.data.image} alt="" loading="lazy" />
+        {/if}
+        <span class="link-body">
+          {#if linkPreview.data.siteName}<span class="link-site">{linkPreview.data.siteName}</span>{/if}
+          {#if linkPreview.data.title}<span class="link-title">{linkPreview.data.title}</span>{/if}
+          {#if linkPreview.data.description}<span class="link-desc">{linkPreview.data.description}</span>{/if}
+        </span>
+      </a>
     {/if}
 
     <span class="meta">
@@ -551,6 +574,37 @@
     background: #000;
   }
   .yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+  /* Link-preview (unfurl) card. */
+  .link-card {
+    display: flex;
+    flex-direction: column;
+    width: min(320px, 100%);
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(127, 127, 127, 0.08);
+    text-decoration: none;
+    color: inherit;
+  }
+  .link-card:hover { background: rgba(127, 127, 127, 0.16); }
+  .link-img { width: 100%; max-height: 160px; object-fit: cover; display: block; }
+  .link-body { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; min-width: 0; }
+  .link-site { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.02em; }
+  .link-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .link-desc {
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .bubble.own .link-site,
+  .bubble.own .link-desc { color: inherit; opacity: 0.8; }
 
   /* Full-screen image viewer. */
   .lightbox {

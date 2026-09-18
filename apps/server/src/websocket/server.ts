@@ -75,6 +75,50 @@ function handleUpload(
   });
 }
 
+// Lightweight in-memory rate limit for /unfurl (per user, sliding window).
+const UNFURL_WINDOW_MS = 60_000;
+const UNFURL_MAX_PER_WINDOW = 40;
+const unfurlHits = new Map<string, number[]>();
+
+function unfurlRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const recent = (unfurlHits.get(userId) ?? []).filter((t) => now - t < UNFURL_WINDOW_MS);
+  if (recent.length >= UNFURL_MAX_PER_WINDOW) {
+    unfurlHits.set(userId, recent);
+    return true;
+  }
+  recent.push(now);
+  unfurlHits.set(userId, recent);
+  return false;
+}
+
+/**
+ * Return an Open-Graph-style preview for a URL so the client can render a card.
+ * Server-side so the office network isn't exposed via arbitrary client fetches;
+ * see LinkPreviewService for SSRF guards, caching and size/time limits.
+ */
+async function handleUnfurl(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  app: AppContext,
+): Promise<void> {
+  const userId = req.headers["x-user-id"];
+  if (typeof userId !== "string" || !app.repos.users.getById(userId)) {
+    res.writeHead(401, { ...JSON_HEADERS, ...CORS_HEADERS });
+    res.end(JSON.stringify({ ok: false }));
+    return;
+  }
+  if (unfurlRateLimited(userId)) {
+    res.writeHead(429, { ...JSON_HEADERS, ...CORS_HEADERS });
+    res.end(JSON.stringify({ ok: false }));
+    return;
+  }
+  const target = new URL(req.url ?? "", "http://localhost").searchParams.get("url") ?? "";
+  const preview = await app.linkPreviewService.getPreview(target);
+  res.writeHead(200, { ...JSON_HEADERS, ...CORS_HEADERS });
+  res.end(JSON.stringify(preview ? { ok: true, preview } : { ok: false }));
+}
+
 export interface OfficeChatServer {
   http: http.Server;
   wss: WebSocketServer;
@@ -102,6 +146,11 @@ export function createServer(app: AppContext, officeCode: string): OfficeChatSer
 
     if (req.method === "POST" && url === "/upload") {
       handleUpload(req, res, app, storage);
+      return;
+    }
+
+    if (req.method === "GET" && url.startsWith("/unfurl")) {
+      void handleUnfurl(req, res, app);
       return;
     }
 

@@ -28,6 +28,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 - Reply · edit · delete · copy · emoji reactions (with "who reacted" hover) · Twemoji rendering
 - Markdown / rich text (bold, italic, strike, inline + fenced code, autolinks)
 - YouTube search + inline play (picker, paste-link auto-embed, in-bubble player)
+- Link previews / unfurl (server-fetched OG cards, cached, SSRF-guarded)
 
 ---
 
@@ -49,7 +50,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 |---|---------|--------|---------|-------|
 | B1 | ✅ **Markdown / rich text** *(done)* | M | ✅ (client render) | `**bold**`, `*italic*`/`_i_`, `~~strike~~`, `` `code` ``, ```code blocks```, http autolinks — safe (escaped) via `lib/markdown.ts` |
 | B2 | ✅ **YouTube search + inline play** ▶️ *(done)* | L | ✅ `youtube` msg type + `VITE_YOUTUBE_API_KEY` | Composer ▶️ picker + paste-link auto-embed; no-cookie iframe in bubble |
-| B3 | **Link previews (unfurl)** | L | 🔴 server fetch + cache | Title/thumbnail card for URLs |
+| B3 | ✅ **Link previews (unfurl)** *(done)* | L | ✅ `GET /unfurl` + SQLite cache | OG/Twitter card under messages; SSRF-guarded, rate-limited, size/time-capped |
 | B4 | **Instagram link embed** | M | 🟡 best-effort only | See §Instagram below |
 | B5 | **Voice messages** 🎙️ | L | 🟡 reuse `/upload` | Record → upload → inline player |
 | B6 | **Drag-and-drop upload** | S | ✅ reuse `/upload` | Paste already works |

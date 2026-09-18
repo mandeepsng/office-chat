@@ -106,6 +106,8 @@ to invite tokens / signed auth.
 | `PORT` / `HOST` | server | Listen address (default `8787` / `0.0.0.0`) |
 | `DATABASE_PATH` | server | SQLite file (default `./data/officechat.db`) |
 | `LOG_MESSAGE_CONTENT` | server | Log message bodies (dev only) |
+| `LINK_PREVIEWS_ENABLED` | server | Server-side URL unfurl cards (default on; `false` to disable) |
+| `LINK_PREVIEW_TTL_DAYS` | server | How long previews are cached (default `7`) |
 | `VITE_WS_URL` | desktop | Server URL (`ws://localhost:8787` dev, `wss://…` prod) |
 | `VITE_GIPHY_API_KEY` | desktop | Enables the GIF picker |
 | `VITE_YOUTUBE_API_KEY` | desktop | Enables YouTube search (YouTube Data API v3) |

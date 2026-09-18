@@ -69,6 +69,15 @@ export interface Reaction {
   emoji: string;
 }
 
+/** Open-Graph-style preview for a URL, rendered as a card under a message. */
+export interface LinkPreview {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  siteName?: string;
+}
+
 /** Who has read up to which message in a room (group "seen by" avatars). */
 export interface ReadReceipt {
   userId: string;
