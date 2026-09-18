@@ -25,6 +25,8 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 - Single-instance lock · global hotkey (Ctrl/Cmd+Shift+O) · window-state persistence
 - Do Not Disturb + sound/notification settings panel
 - Emoji picker · GIF picker (GIPHY) · typing · read receipts · presence · light/dark
+- Reply · edit · delete · copy · emoji reactions (with "who reacted" hover) · Twemoji rendering
+- Markdown / rich text (bold, italic, strike, inline + fenced code, autolinks)
 
 ---
 
@@ -44,7 +46,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 
 | # | Feature | Effort | Backend | Notes |
 |---|---------|--------|---------|-------|
-| B1 | **Markdown / rich text** | M | ✅ (client render) | `**bold**`, `*italic*`, `` `code` ``, code blocks |
+| B1 | ✅ **Markdown / rich text** *(done)* | M | ✅ (client render) | `**bold**`, `*italic*`/`_i_`, `~~strike~~`, `` `code` ``, ```code blocks```, http autolinks — safe (escaped) via `lib/markdown.ts` |
 | B2 | **YouTube search + inline play** ▶️ | L | 🟡 new msg type + key | See §YouTube below |
 | B3 | **Link previews (unfurl)** | L | 🔴 server fetch + cache | Title/thumbnail card for URLs |
 | B4 | **Instagram link embed** | M | 🟡 best-effort only | See §Instagram below |

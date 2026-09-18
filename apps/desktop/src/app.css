@@ -90,5 +90,15 @@ img.emoji {
   display: inline-block;
 }
 
+/* Inline markdown injected via {@html} (unscoped) — bold/italic use browser defaults. */
+.md-code {
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 0.88em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.18);
+}
+.md-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }

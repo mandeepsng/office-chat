@@ -10,6 +10,7 @@
   import { controller } from "../lib/controller";
   import { reactionGroups, type ReactionGroup } from "../lib/stores/reactions.svelte";
   import { emojiHtml } from "../lib/twemoji";
+  import { splitBlocks, renderInline } from "../lib/markdown";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   interface Props {
@@ -26,8 +27,17 @@
   const shownReaders = $derived(seenBy.slice(0, MAX_AVATARS));
   const extraReaders = $derived(Math.max(0, seenBy.length - MAX_AVATARS));
 
-  const parts = $derived(
-    mentionParts(message.content, message.mentions ?? [], auth.identity?.userId ?? null),
+  // Message body split into fenced code blocks and rich-text runs; text runs are
+  // further split into @mention tokens so both mentions and markdown can render.
+  const blocks = $derived(
+    splitBlocks(message.content).map((b) =>
+      b.kind === "code"
+        ? b
+        : {
+            kind: "text" as const,
+            parts: mentionParts(b.text, message.mentions ?? [], auth.identity?.userId ?? null),
+          },
+    ),
   );
 
   // Only your own, non-deleted text messages can be edited.
@@ -221,9 +231,10 @@
         <img class="gif" src={message.content} alt="Shared attachment" loading="lazy" />
       </button>
     {:else}
-      <span class="text">{#each parts as part}{#if part.mention}<span
-            class="mention"
-            class:self={part.self}>{part.text}</span>{:else}{@html emojiHtml(part.text)}{/if}{/each}</span>
+      <div class="text">{#each blocks as block}{#if block.kind === "code"}<pre
+            class="code-block"><code>{block.text}</code></pre>{:else}{#each block.parts as part}{#if part.mention}<span
+                class="mention"
+                class:self={part.self}>{part.text}</span>{:else}{@html renderInline(part.text)}{/if}{/each}{/if}{/each}</div>
     {/if}
 
     <span class="meta">
@@ -475,6 +486,18 @@
   .bubble.failed { outline: 1px solid var(--danger); }
   .sender { display: block; font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 2px; }
   .text { white-space: pre-wrap; word-break: break-word; }
+  .code-block {
+    margin: 4px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.16);
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .code-block code { font-family: inherit; }
   .mention { color: var(--accent); font-weight: 600; }
   .bubble.own .mention { color: inherit; font-weight: 700; text-decoration: underline; }
   .mention.self {
