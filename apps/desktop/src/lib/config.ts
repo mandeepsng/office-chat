@@ -11,6 +11,7 @@ export const config = {
   wsUrl,
   httpUrl: import.meta.env.VITE_HTTP_URL ?? toHttpUrl(wsUrl),
   giphyApiKey: import.meta.env.VITE_GIPHY_API_KEY ?? "",
+  youtubeApiKey: import.meta.env.VITE_YOUTUBE_API_KEY ?? "",
 };
 
 /** Best-effort platform detection for the device record. */

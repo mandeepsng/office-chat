@@ -27,6 +27,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 - Emoji picker · GIF picker (GIPHY) · typing · read receipts · presence · light/dark
 - Reply · edit · delete · copy · emoji reactions (with "who reacted" hover) · Twemoji rendering
 - Markdown / rich text (bold, italic, strike, inline + fenced code, autolinks)
+- YouTube search + inline play (picker, paste-link auto-embed, in-bubble player)
 
 ---
 
@@ -47,7 +48,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 | # | Feature | Effort | Backend | Notes |
 |---|---------|--------|---------|-------|
 | B1 | ✅ **Markdown / rich text** *(done)* | M | ✅ (client render) | `**bold**`, `*italic*`/`_i_`, `~~strike~~`, `` `code` ``, ```code blocks```, http autolinks — safe (escaped) via `lib/markdown.ts` |
-| B2 | **YouTube search + inline play** ▶️ | L | 🟡 new msg type + key | See §YouTube below |
+| B2 | ✅ **YouTube search + inline play** ▶️ *(done)* | L | ✅ `youtube` msg type + `VITE_YOUTUBE_API_KEY` | Composer ▶️ picker + paste-link auto-embed; no-cookie iframe in bubble |
 | B3 | **Link previews (unfurl)** | L | 🔴 server fetch + cache | Title/thumbnail card for URLs |
 | B4 | **Instagram link embed** | M | 🟡 best-effort only | See §Instagram below |
 | B5 | **Voice messages** 🎙️ | L | 🟡 reuse `/upload` | Record → upload → inline player |

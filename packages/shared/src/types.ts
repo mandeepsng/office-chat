@@ -4,7 +4,7 @@ export type Platform = "windows" | "macos" | "linux";
 
 export type RoomType = "direct" | "group";
 
-export type MessageType = "text" | "gif" | "image" | "file" | "system";
+export type MessageType = "text" | "gif" | "image" | "youtube" | "file" | "system";
 
 export type ConnectionStatus =
   | "connecting"

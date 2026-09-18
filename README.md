@@ -13,7 +13,8 @@ and simple.
 Direct + group chats · message history with cursor pagination · optimistic send
 with an **offline queue** · exponential-backoff reconnection · presence
 (online/offline) · debounced typing indicators · read receipts · emoji picker ·
-GIPHY GIFs · native desktop notifications (suppressed for the focused room) ·
+GIPHY GIFs · YouTube search + inline play · native desktop notifications
+(suppressed for the focused room) ·
 system tray with close-to-tray · light/dark themes · keyboard shortcuts.
 
 ## Repository layout
@@ -46,6 +47,7 @@ cp apps/server/.env.example apps/server/.env
 # (optional) configure the desktop client
 cp apps/desktop/.env.example apps/desktop/.env
 #   → set VITE_GIPHY_API_KEY to enable GIFs
+#   → set VITE_YOUTUBE_API_KEY to enable YouTube search
 ```
 
 ## Run
@@ -106,6 +108,7 @@ to invite tokens / signed auth.
 | `LOG_MESSAGE_CONTENT` | server | Log message bodies (dev only) |
 | `VITE_WS_URL` | desktop | Server URL (`ws://localhost:8787` dev, `wss://…` prod) |
 | `VITE_GIPHY_API_KEY` | desktop | Enables the GIF picker |
+| `VITE_YOUTUBE_API_KEY` | desktop | Enables YouTube search (YouTube Data API v3) |
 
 ## Production deployment
 

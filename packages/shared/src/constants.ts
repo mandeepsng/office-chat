@@ -32,6 +32,7 @@ export const MESSAGE_TYPES = [
   "text",
   "gif",
   "image",
+  "youtube",
   "file",
   "system",
 ] as const;

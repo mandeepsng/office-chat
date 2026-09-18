@@ -11,6 +11,7 @@
   import { reactionGroups, type ReactionGroup } from "../lib/stores/reactions.svelte";
   import { emojiHtml } from "../lib/twemoji";
   import { splitBlocks, renderInline } from "../lib/markdown";
+  import { embedUrl, videoIdFromContent } from "../lib/youtube";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   interface Props {
@@ -38,6 +39,11 @@
             parts: mentionParts(b.text, message.mentions ?? [], auth.identity?.userId ?? null),
           },
     ),
+  );
+
+  // For youtube messages, the embeddable video id (null → render as a link).
+  const ytId = $derived(
+    message.messageType === "youtube" ? videoIdFromContent(message.content) : null,
   );
 
   // Only your own, non-deleted text messages can be edited.
@@ -107,6 +113,7 @@
     if (m.deletedAt) return "Message deleted";
     if (m.messageType === "gif") return "GIF";
     if (m.messageType === "image") return "Image";
+    if (m.messageType === "youtube") return "▶️ Video";
     return m.content;
   }
 
@@ -230,6 +237,22 @@
       <button class="media-btn" aria-label="Open image" onclick={() => (viewer = message.content)}>
         <img class="gif" src={message.content} alt="Shared attachment" loading="lazy" />
       </button>
+    {:else if message.messageType === "youtube"}
+      {#if ytId}
+        <div class="yt">
+          <iframe
+            src={embedUrl(ytId)}
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+            loading="lazy"
+          ></iframe>
+        </div>
+      {:else}
+        <a class="md-link" href={message.content} target="_blank" rel="noreferrer">{message.content}</a>
+      {/if}
     {:else}
       <div class="text">{#each blocks as block}{#if block.kind === "code"}<pre
             class="code-block"><code>{block.text}</code></pre>{:else}{#each block.parts as part}{#if part.mention}<span
@@ -519,6 +542,15 @@
     line-height: 0;
   }
   .gif { max-width: 220px; border-radius: 10px; display: block; }
+  .yt {
+    position: relative;
+    width: min(360px, 60vw);
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+  }
+  .yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
   /* Full-screen image viewer. */
   .lightbox {

@@ -9,11 +9,13 @@
   import { editState, clearEditTarget } from "../lib/stores/edit.svelte";
   import { uploadImage } from "../lib/upload";
   import type { Gif } from "../lib/giphy";
+  import { youtubeIdFromUrl, type Video } from "../lib/youtube";
   import EmojiPicker from "./EmojiPicker.svelte";
   import GifPicker from "./GifPicker.svelte";
+  import YouTubePicker from "./YouTubePicker.svelte";
 
   let text = $state("");
-  let open = $state<null | "emoji" | "gif">(null);
+  let open = $state<null | "emoji" | "gif" | "youtube">(null);
   let textarea = $state<HTMLTextAreaElement>();
   let fileInput = $state<HTMLInputElement>();
 
@@ -157,6 +159,16 @@
       return;
     }
 
+    // A message that is nothing but a YouTube link auto-embeds as a video.
+    if (!/\s/.test(value) && youtubeIdFromUrl(value)) {
+      controller.sendYoutube(value);
+      text = "";
+      picked = [];
+      mentionOpen = false;
+      clearReplyTarget();
+      return;
+    }
+
     // Only keep mentions whose "@Name" survived edits, deduped by id.
     const ids = [
       ...new Set(picked.filter((m) => value.includes(`@${m.name}`)).map((m) => m.id)),
@@ -174,6 +186,7 @@
     if (!t) return "";
     if (t.messageType === "gif") return "GIF";
     if (t.messageType === "image") return "Image";
+    if (t.messageType === "youtube") return "▶️ Video";
     return t.content;
   }
 
@@ -224,6 +237,11 @@
     controller.sendGif(gif.url);
     open = null;
   }
+
+  function pickVideo(video: Video) {
+    controller.sendYoutube(video.url);
+    open = null;
+  }
 </script>
 
 <footer class="composer">
@@ -252,6 +270,11 @@
   {#if open === "gif"}
     <div class="picker-anchor gif">
       <GifPicker onpick={pickGif} onclose={() => (open = null)} />
+    </div>
+  {/if}
+  {#if open === "youtube"}
+    <div class="picker-anchor gif">
+      <YouTubePicker onpick={pickVideo} onclose={() => (open = null)} />
     </div>
   {/if}
 
@@ -322,6 +345,13 @@
     aria-label="GIF"
     onclick={() => (open = open === "gif" ? null : "gif")}
   >GIF</button>
+
+  <button
+    class="icon yt-btn"
+    title="YouTube"
+    aria-label="Search YouTube"
+    onclick={() => (open = open === "youtube" ? null : "youtube")}
+  >▶️</button>
 
   <button class="send" onclick={send} disabled={!text.trim()} aria-label="Send">➤</button>
 </footer>

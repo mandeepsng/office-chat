@@ -193,6 +193,10 @@ class Controller {
     this.sendMessage(url, "image");
   }
 
+  sendYoutube(url: string): void {
+    this.sendMessage(url, "youtube");
+  }
+
   /** Edit one of your own text messages; the server broadcasts message:updated. */
   editMessage(messageId: string, content: string): void {
     if (!content.trim()) return;
@@ -406,7 +410,9 @@ class Controller {
             ? "Sent a GIF"
             : message.messageType === "image"
               ? "Sent an image"
-              : message.content;
+              : message.messageType === "youtube"
+                ? "Shared a video ▶️"
+                : message.content;
         void notifications.notify({
           title: mentionsMe ? `${sender} mentioned you 💬` : sender,
           body: preview,
