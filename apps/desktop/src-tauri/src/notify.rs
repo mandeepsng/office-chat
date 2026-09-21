@@ -7,11 +7,38 @@
 //! `on_activated` callback lets us re-focus the app and emit the clicked room
 //! back to the frontend.
 
+use std::path::PathBuf;
+use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter, Runtime};
 
 /// Emitted to the frontend when the user clicks a message notification. The
 /// payload is the room id captured when the toast was shown (may be `None`).
 pub const NOTIFICATION_CLICK_EVENT: &str = "notification-click";
+
+/// Absolute path to the app icon, written out once to a temp file.
+///
+/// Windows toasts (and libnotify on Linux) need a real `file://` path for a
+/// notification icon — they can't reference bytes embedded in the binary, and
+/// we don't ship an MSIX package (`ms-appx://`) that would let us reference a
+/// bundled resource by URI. So the icon is embedded at compile time and
+/// dropped into the temp dir the first time a notification is shown.
+#[cfg(any(windows, target_os = "linux"))]
+fn notification_icon_path() -> Option<&'static PathBuf> {
+    static ICON_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+    ICON_PATH
+        .get_or_init(|| {
+            let bytes = include_bytes!("../icons/128x128.png");
+            let path = std::env::temp_dir().join("officechat-notification-icon.png");
+            if !path.exists() {
+                if let Err(err) = std::fs::write(&path, bytes) {
+                    eprintln!("[notify] failed to write notification icon: {err}");
+                    return None;
+                }
+            }
+            Some(path)
+        })
+        .as_ref()
+}
 
 /// Show a message notification. On Windows the toast carries a click handler
 /// that emits [`NOTIFICATION_CLICK_EVENT`]; other platforms show a best-effort
@@ -26,7 +53,7 @@ pub fn show_notification<R: Runtime>(
 ) {
     #[cfg(windows)]
     {
-        use tauri_winrt_notification::{Duration, Sound, Toast};
+        use tauri_winrt_notification::{Duration, IconCrop, Sound, Toast};
 
         // Map the user's toast-sound preference; "Silent" (or None) plays nothing.
         let toast_sound = match sound.as_deref() {
@@ -48,11 +75,19 @@ pub fn show_notification<R: Runtime>(
 
         let handle = app.clone();
         let room = room_id.clone();
-        let result = Toast::new(&app_id)
+        let mut toast = Toast::new(&app_id)
             .title(&title)
             .text1(&body)
             .duration(Duration::Short)
-            .sound(toast_sound)
+            .sound(toast_sound);
+
+        // Show the app logo in the toast body — without it Windows renders a
+        // bare two-line text toast, which reads as small/generic.
+        if let Some(icon_path) = notification_icon_path() {
+            toast = toast.icon(icon_path, IconCrop::Circular, "OfficeChat");
+        }
+
+        let result = toast
             .on_activated(move |_action| {
                 // A plain body click carries no activation argument, so we
                 // forward the room captured when the toast was created.
@@ -72,7 +107,8 @@ pub fn show_notification<R: Runtime>(
         // Linux uses the freedesktop sound theme rather than our Windows enum.
         let _ = &sound;
 
-        let result = Notification::new()
+        let mut notification = Notification::new();
+        notification
             .summary(&title)
             .body(&body)
             .appname("OfficeChat")
@@ -83,8 +119,11 @@ pub fn show_notification<R: Runtime>(
             // normal notifications to its tray after a few seconds.)
             .timeout(Timeout::Milliseconds(12_000))
             // "default" is the action fired when the notification body is clicked.
-            .action("default", "Open")
-            .show();
+            .action("default", "Open");
+        if let Some(icon_path) = notification_icon_path() {
+            notification.icon(&icon_path.to_string_lossy());
+        }
+        let result = notification.show();
 
         match result {
             Ok(handle) => {
