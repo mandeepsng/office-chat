@@ -68,21 +68,34 @@
   // Users chosen via the picker, so we can resolve names → ids on send.
   let picked = $state<{ id: string; name: string }[]>([]);
 
-  // Members of the current room (minus yourself) as mention candidates.
-  const candidates = $derived.by(() => {
+  type Candidate =
+    | { kind: "user"; id: string; name: string }
+    | { kind: "broadcast"; name: "everyone" | "here"; desc: string };
+
+  // Room members (minus yourself) plus @everyone/@here (group rooms only).
+  const candidates = $derived.by<Candidate[]>(() => {
     const room = rooms.list.find((r) => r.id === rooms.activeRoomId);
     const ownId = auth.identity?.userId;
-    if (!room) return [] as User[];
-    return room.memberIds
+    if (!room) return [];
+    const users: Candidate[] = room.memberIds
       .filter((id) => id !== ownId)
       .map((id) => directory.users[id])
-      .filter((u): u is User => !!u);
+      .filter((u): u is User => !!u)
+      .map((u) => ({ kind: "user", id: u.id, name: u.name }));
+    const broadcasts: Candidate[] =
+      room.type === "group"
+        ? [
+            { kind: "broadcast", name: "everyone", desc: "Notify everyone in this room" },
+            { kind: "broadcast", name: "here", desc: "Notify online members" },
+          ]
+        : [];
+    return [...broadcasts, ...users];
   });
 
   const matches = $derived(
     mentionOpen
       ? candidates
-          .filter((u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+          .filter((c) => c.name.toLowerCase().includes(mentionQuery.toLowerCase()))
           .slice(0, 6)
       : [],
   );
@@ -112,14 +125,15 @@
     }
   }
 
-  async function acceptMention(user: User) {
+  async function acceptMention(c: Candidate) {
     if (!textarea) return;
     const cursor = textarea.selectionStart;
     const before = text.slice(0, mentionAt);
     const after = text.slice(cursor);
-    const insert = `@${user.name} `;
+    const insert = `@${c.name} `;
     text = before + insert + after;
-    picked = [...picked, { id: user.id, name: user.name }];
+    // Broadcast pings are expanded server-side, so only real users go in `picked`.
+    if (c.kind === "user") picked = [...picked, { id: c.id, name: c.name }];
     mentionOpen = false;
     const pos = (before + insert).length;
     await tick();
@@ -204,8 +218,8 @@
       }
       if (event.key === "Enter" || event.key === "Tab") {
         event.preventDefault();
-        const user = matches[mentionIndex];
-        if (user) void acceptMention(user);
+        const choice = matches[mentionIndex];
+        if (choice) void acceptMention(choice);
         return;
       }
       if (event.key === "Escape") {
@@ -280,7 +294,7 @@
 
   {#if mentionOpen && matches.length > 0}
     <div class="mention-list" role="listbox">
-      {#each matches as user, i (user.id)}
+      {#each matches as c, i (c.kind === "user" ? c.id : c.name)}
         <button
           type="button"
           class="mention-item"
@@ -289,11 +303,19 @@
           aria-selected={i === mentionIndex}
           onmousedown={(e) => {
             e.preventDefault();
-            void acceptMention(user);
+            void acceptMention(c);
           }}
         >
-          <span class="mention-avatar">{user.name.charAt(0).toUpperCase()}</span>
-          {user.name}
+          {#if c.kind === "broadcast"}
+            <span class="mention-avatar broadcast">📣</span>
+            <span class="mention-main">
+              <span class="mention-name">@{c.name}</span>
+              <span class="mention-desc">{c.desc}</span>
+            </span>
+          {:else}
+            <span class="mention-avatar">{c.name.charAt(0).toUpperCase()}</span>
+            {c.name}
+          {/if}
         </button>
       {/each}
     </div>
@@ -415,6 +437,10 @@
     font-weight: 700;
     flex-shrink: 0;
   }
+  .mention-avatar.broadcast { background: transparent; font-size: 15px; }
+  .mention-main { display: flex; flex-direction: column; min-width: 0; }
+  .mention-name { font-weight: 600; }
+  .mention-desc { font-size: 11px; color: var(--text-faint); }
   textarea {
     flex: 1;
     resize: none;

@@ -122,6 +122,43 @@ test("drops mentions of users who are not room members", () => {
   assert.deepEqual(a.last(ServerEvents.MessageSent).payload.message.mentions, []);
 });
 
+test("@everyone expands to all other room members", () => {
+  const h = makeHarness();
+  const a = h.authUser("A");
+  const b = h.authUser("B");
+  const c = h.authUser("C"); // all three in Office General
+  const roomId = officeRoomId(a);
+  const aId = a.last(ServerEvents.AuthSuccess).payload.user.id;
+  const bId = b.last(ServerEvents.AuthSuccess).payload.user.id;
+  const cId = c.last(ServerEvents.AuthSuccess).payload.user.id;
+
+  a.send(ClientEvents.MessageSend, {
+    roomId,
+    clientMessageId: randomUUID(),
+    content: "@everyone standup now",
+  });
+
+  const mentions = a.last(ServerEvents.MessageSent).payload.message.mentions as string[];
+  assert.deepEqual([...mentions].sort(), [bId, cId].sort());
+  assert.ok(!mentions.includes(aId), "sender is not mentioned");
+});
+
+test("@here pings online members", () => {
+  const h = makeHarness();
+  const a = h.authUser("A");
+  const b = h.authUser("B");
+  const roomId = officeRoomId(a);
+  const bId = b.last(ServerEvents.AuthSuccess).payload.user.id;
+
+  a.send(ClientEvents.MessageSend, {
+    roomId,
+    clientMessageId: randomUUID(),
+    content: "@here quick question",
+  });
+
+  assert.deepEqual(a.last(ServerEvents.MessageSent).payload.message.mentions, [bId]);
+});
+
 test("is idempotent for a repeated clientMessageId", () => {
   const h = makeHarness();
   const a = h.authUser("A");

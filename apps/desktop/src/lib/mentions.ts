@@ -13,16 +13,18 @@ export interface MentionPart {
  * mentions. Tokens are built from the message's validated mention ids, matched
  * longest-first so "@Mandeep Singh" wins over "@Mandeep".
  */
+/** Broadcast mentions that ping the whole room; always highlighted. */
+const BROADCAST_TOKENS = ["@everyone", "@here"] as const;
+
 export function mentionParts(
   content: string,
   mentionIds: string[],
   selfId: string | null,
 ): MentionPart[] {
-  if (mentionIds.length === 0) return [{ text: content, mention: false, self: false }];
-
-  const tokens = mentionIds
-    .map((id) => ({ token: `@${userName(id)}`, self: id === selfId }))
-    .sort((a, b) => b.token.length - a.token.length);
+  const tokens = [
+    ...mentionIds.map((id) => ({ token: `@${userName(id)}`, self: id === selfId })),
+    ...BROADCAST_TOKENS.map((token) => ({ token, self: true })),
+  ].sort((a, b) => b.token.length - a.token.length);
 
   const parts: MentionPart[] = [];
   let i = 0;

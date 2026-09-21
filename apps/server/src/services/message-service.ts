@@ -39,10 +39,22 @@ export class MessageService {
 
     // Keep only mentions that are real members of the room (and not the
     // sender), so a client can't make the server notify arbitrary users.
-    const members = new Set(this.repos.rooms.memberIds(input.roomId));
-    const mentions = [...new Set(input.mentions)].filter(
-      (id) => id !== senderId && members.has(id),
+    const memberIds = this.repos.rooms.memberIds(input.roomId);
+    const members = new Set(memberIds);
+    const mentionSet = new Set(
+      [...new Set(input.mentions)].filter((id) => id !== senderId && members.has(id)),
     );
+
+    // @everyone pings all members; @here pings only those currently online.
+    // Expanded server-side from the message text so it can't be forged.
+    if (/(^|\s)@everyone\b/i.test(input.content)) {
+      for (const id of memberIds) if (id !== senderId) mentionSet.add(id);
+    } else if (/(^|\s)@here\b/i.test(input.content)) {
+      for (const id of memberIds) {
+        if (id !== senderId && this.repos.users.getById(id)?.isOnline) mentionSet.add(id);
+      }
+    }
+    const mentions = [...mentionSet];
 
     const message: Message = {
       id: crypto.randomUUID(),

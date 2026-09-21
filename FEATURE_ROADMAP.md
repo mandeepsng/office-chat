@@ -29,6 +29,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 - Markdown / rich text (bold, italic, strike, inline + fenced code, autolinks)
 - YouTube search + inline play (picker, paste-link auto-embed, in-bubble player)
 - Link previews / unfurl (server-fetched OG cards, cached, SSRF-guarded)
+- @everyone / @here group-wide pings (server-expanded, online-aware)
 
 ---
 
@@ -70,7 +71,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 | D2 | **Pinned messages** | M | 🔴 pin table/flag | Pin important msgs per room |
 | D3 | **Unread divider + jump** | S | ✅ client-side | "New messages" line |
 | D4 | **Per-room mute** | S | ✅ client setting | Room-level DND |
-| D5 | **@everyone / @here** | S | 🟡 extend mentions | Group-wide ping |
+| D5 | ✅ **@everyone / @here** *(done)* | S | ✅ server-expanded mentions | Group-wide ping; @here = online only; picker + highlight |
 | D6 | **Room member list UI** | M | ✅ `room:join/leave` | Add/remove/leave |
 
 ### E. Delight
