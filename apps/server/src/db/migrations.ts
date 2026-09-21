@@ -79,12 +79,21 @@ export function runMigrations(db: DB): void {
       PRIMARY KEY (room_id, user_id)
     );
 
+    CREATE TABLE IF NOT EXISTS room_pins (
+      room_id     TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      pinned_by   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      pinned_at   TEXT NOT NULL,
+      PRIMARY KEY (room_id, message_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_room_id     ON messages(room_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at  ON messages(created_at);
     CREATE INDEX IF NOT EXISTS idx_messages_sender_id   ON messages(sender_id);
     CREATE INDEX IF NOT EXISTS idx_room_members_user_id ON room_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_room_members_room_id ON room_members(room_id);
     CREATE INDEX IF NOT EXISTS idx_reactions_message_id ON reactions(message_id);
+    CREATE INDEX IF NOT EXISTS idx_room_pins_room_id    ON room_pins(room_id);
 
     -- Idempotent sends: a (sender, client_message_id) pair maps to one message.
     CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_client_id

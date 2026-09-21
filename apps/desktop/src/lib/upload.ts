@@ -62,3 +62,22 @@ export async function uploadImage(blob: Blob): Promise<string> {
   const { url } = (await res.json()) as { url: string };
   return `${config.httpUrl}${url}`;
 }
+
+/**
+ * Upload a recorded voice clip and return the absolute URL to embed in a
+ * voice message. No re-encoding — sent as recorded by MediaRecorder.
+ */
+export async function uploadVoice(blob: Blob): Promise<string> {
+  const userId = auth.identity?.userId;
+  if (!userId) throw new Error("Not authenticated");
+
+  const res = await fetch(`${config.httpUrl}/upload`, {
+    method: "POST",
+    headers: { "content-type": blob.type, "x-user-id": userId },
+    body: blob,
+  });
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+
+  const { url } = (await res.json()) as { url: string };
+  return `${config.httpUrl}${url}`;
+}

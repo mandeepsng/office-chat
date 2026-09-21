@@ -14,6 +14,8 @@ export const ClientEvents = {
   MessageEdit: "message:edit",
   MessageDelete: "message:delete",
   MessageRead: "message:read",
+  MessageSearch: "message:search",
+  MessagePinToggle: "message:pinToggle",
 
   ReactionToggle: "reaction:toggle",
 
@@ -37,8 +39,10 @@ export const ServerEvents = {
   MessageDeleted: "message:deleted",
   MessageSent: "message:sent",
   MessageRead: "message:read",
+  MessageSearchResults: "message:searchResults",
 
   ReactionUpdated: "reaction:updated",
+  RoomPinsUpdated: "room:pinsUpdated",
 
   TypingStart: "typing:start",
   TypingStop: "typing:stop",
@@ -63,6 +67,7 @@ export const ErrorCodes = {
   RoomNotFound: "ROOM_NOT_FOUND",
   NotRoomMember: "NOT_ROOM_MEMBER",
   MessageNotFound: "MESSAGE_NOT_FOUND",
+  PinLimitReached: "PIN_LIMIT_REACHED",
   Forbidden: "FORBIDDEN",
   RateLimited: "RATE_LIMITED",
   Internal: "INTERNAL_ERROR",

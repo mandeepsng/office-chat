@@ -5,6 +5,7 @@ import { RoomsRepository } from "./repositories/rooms";
 import { MessagesRepository } from "./repositories/messages";
 import { ReactionsRepository } from "./repositories/reactions";
 import { LinkPreviewsRepository } from "./repositories/link-previews";
+import { PinsRepository } from "./repositories/pins";
 
 export interface Repositories {
   db: DB;
@@ -14,6 +15,7 @@ export interface Repositories {
   messages: MessagesRepository;
   reactions: ReactionsRepository;
   linkPreviews: LinkPreviewsRepository;
+  pins: PinsRepository;
 }
 
 export function createRepositories(db: DB): Repositories {
@@ -25,5 +27,6 @@ export function createRepositories(db: DB): Repositories {
     messages: new MessagesRepository(db),
     reactions: new ReactionsRepository(db),
     linkPreviews: new LinkPreviewsRepository(db),
+    pins: new PinsRepository(db),
   };
 }

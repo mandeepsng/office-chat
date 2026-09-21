@@ -14,7 +14,7 @@
   let search = $state("");
   let creatingGroup = $state(false);
   let groupName = $state("");
-  let searchInput = $state<HTMLInputElement>();
+  let confirmingReset = $state(false);
 
   const ownId = $derived(auth.identity?.userId ?? "");
 
@@ -42,10 +42,6 @@
       groupName = "";
       creatingGroup = false;
     }
-  }
-
-  export function focusSearch() {
-    searchInput?.focus();
   }
 </script>
 
@@ -83,9 +79,8 @@
 
   <input
     class="search"
-    bind:this={searchInput}
     bind:value={search}
-    placeholder="Search (Ctrl/Cmd+K)"
+    placeholder="Filter rooms & people"
   />
 
   <nav class="scroll">
@@ -129,7 +124,17 @@
   </nav>
 
   <footer>
-    <button class="link" onclick={() => controller.resetIdentity()}>Reset identity</button>
+    {#if confirmingReset}
+      <div class="reset-confirm">
+        <span>Reset identity? This removes this device's local login.</span>
+        <div class="reset-confirm-actions">
+          <button class="link danger" onclick={() => controller.resetIdentity()}>Reset</button>
+          <button class="link" onclick={() => (confirmingReset = false)}>Cancel</button>
+        </div>
+      </div>
+    {:else}
+      <button class="link" onclick={() => (confirmingReset = true)}>Reset identity</button>
+    {/if}
   </footer>
 </aside>
 
@@ -262,4 +267,9 @@
     padding: 0;
   }
   .link:hover { color: var(--text-muted); }
+  .link.danger { color: var(--danger); font-weight: 600; }
+  .link.danger:hover { color: var(--danger); opacity: 0.8; }
+  .reset-confirm { display: flex; flex-direction: column; gap: 8px; }
+  .reset-confirm span { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+  .reset-confirm-actions { display: flex; gap: 14px; }
 </style>

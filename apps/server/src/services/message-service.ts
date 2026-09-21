@@ -1,13 +1,16 @@
 import { ErrorCodes } from "@office-chat/shared";
-import type { Message } from "@office-chat/shared";
+import type { Message, PinnedMessage } from "@office-chat/shared";
 import type { Reaction } from "@office-chat/shared";
 import type {
   MessageEditInput,
+  MessagePinToggleInput,
   MessageReadInput,
+  MessageSearchInput,
   MessageSendInput,
   ReactionToggleInput,
 } from "@office-chat/validation";
 import type { Repositories } from "../db";
+import { MAX_PINS_PER_ROOM } from "../db/repositories/pins";
 import { AppError } from "../utils/errors";
 import type { RoomService } from "./room-service";
 
@@ -115,5 +118,36 @@ export class MessageService {
       throw new AppError(ErrorCodes.MessageNotFound, "Message not found");
     }
     this.repos.messages.setLastRead(input.roomId, userId, input.messageId, new Date().toISOString());
+  }
+
+  /** LIKE search scoped to a single room (membership-checked) or every room
+   *  the caller belongs to. */
+  search(userId: string, input: MessageSearchInput): Message[] {
+    const roomIds = input.roomId
+      ? [this.rooms.requireMembership(input.roomId, userId).id]
+      : this.repos.rooms.listForUser(userId).map((r) => r.id);
+    return this.repos.messages.search(roomIds, input.query, input.limit);
+  }
+
+  /** Toggle a pin on a message; returns the room and its full, updated pin list. */
+  togglePin(
+    userId: string,
+    input: MessagePinToggleInput,
+  ): { roomId: string; pins: PinnedMessage[] } {
+    const message = this.repos.messages.getById(input.messageId);
+    if (!message || message.deletedAt) {
+      throw new AppError(ErrorCodes.MessageNotFound, "Message not found");
+    }
+    this.rooms.requireMembership(message.roomId, userId);
+
+    if (this.repos.pins.isPinned(message.roomId, message.id)) {
+      this.repos.pins.unpin(message.roomId, message.id);
+    } else {
+      if (this.repos.pins.count(message.roomId) >= MAX_PINS_PER_ROOM) {
+        throw new AppError(ErrorCodes.PinLimitReached, "This room has reached its pin limit");
+      }
+      this.repos.pins.pin(message.roomId, message.id, userId, new Date().toISOString());
+    }
+    return { roomId: message.roomId, pins: this.repos.pins.listForRoom(message.roomId) };
   }
 }

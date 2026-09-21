@@ -30,6 +30,10 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 - YouTube search + inline play (picker, paste-link auto-embed, in-bubble player)
 - Link previews / unfurl (server-fetched OG cards, cached, SSRF-guarded)
 - @everyone / @here group-wide pings (server-expanded, online-aware)
+- Voice messages (record via MediaRecorder → upload → inline `<audio>` player)
+- Message search (Ctrl/Cmd+K search overlay: rooms/people + full message search)
+- Pinned messages (pin/unpin, pinned strip with jump-to-message)
+- GIF reactions (react to any message with a GIF, alongside emoji)
 
 ---
 
@@ -53,7 +57,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 | B2 | ✅ **YouTube search + inline play** ▶️ *(done)* | L | ✅ `youtube` msg type + `VITE_YOUTUBE_API_KEY` | Composer ▶️ picker + paste-link auto-embed; no-cookie iframe in bubble |
 | B3 | ✅ **Link previews (unfurl)** *(done)* | L | ✅ `GET /unfurl` + SQLite cache | OG/Twitter card under messages; SSRF-guarded, rate-limited, size/time-capped |
 | B4 | **Instagram link embed** | M | 🟡 best-effort only | See §Instagram below |
-| B5 | **Voice messages** 🎙️ | L | 🟡 reuse `/upload` | Record → upload → inline player |
+| B5 | ✅ **Voice messages** 🎙️ *(done)* | L | ✅ reuse `/upload` | Record button (MediaRecorder) → upload → inline `<audio>` player |
 | B6 | **Drag-and-drop upload** | S | ✅ reuse `/upload` | Paste already works |
 
 ### C. Presence & social
@@ -67,8 +71,8 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 
 | # | Feature | Effort | Backend | Notes |
 |---|---------|--------|---------|-------|
-| D1 | **Message search** | M | 🔴 SQLite `LIKE` query | Ctrl+K already does users/rooms |
-| D2 | **Pinned messages** | M | 🔴 pin table/flag | Pin important msgs per room |
+| D1 | ✅ **Message search** *(done)* | M | ✅ SQLite `LIKE` query | Ctrl/Cmd+K opens a Google-style search overlay: instant rooms/people + debounced message search with highlighted snippets |
+| D2 | ✅ **Pinned messages** *(done)* | M | ✅ `room_pins` table | 📌 Pin/unpin from the message menu; pinned strip under the chat header expands to a list, click-to-jump |
 | D3 | **Unread divider + jump** | S | ✅ client-side | "New messages" line |
 | D4 | **Per-room mute** | S | ✅ client setting | Room-level DND |
 | D5 | ✅ **@everyone / @here** *(done)* | S | ✅ server-expanded mentions | Group-wide ping; @here = online only; picker + highlight |
@@ -79,7 +83,7 @@ For the native/OS features (notifications, tray, hotkeys, DND, etc.) see
 | # | Feature | Effort | Backend | Notes |
 |---|---------|--------|---------|-------|
 | E1 | **Message effects** | S | ✅ client-side | 🎉 confetti, sound themes |
-| E2 | **GIF reactions** | S | 🔴 (after A5) | React with a GIF |
+| E2 | ✅ **GIF reactions** *(done)* | S | ✅ reactions.emoji holds a GIF url | New "GIF" button next to ➕ in the reaction bar; renders as a small inline GIF chip |
 
 ---
 

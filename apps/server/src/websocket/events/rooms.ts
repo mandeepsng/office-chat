@@ -50,5 +50,6 @@ export function handleRoomHistory(ec: EventContext, payload: unknown): void {
     hasMore: page.hasMore,
     reads: ec.app.repos.messages.readReceiptsForRoom(input.roomId),
     reactions: ec.app.repos.reactions.forMessages(page.messages.map((m) => m.id)),
+    pins: ec.app.repos.pins.listForRoom(input.roomId),
   });
 }

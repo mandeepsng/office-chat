@@ -4,7 +4,7 @@ export type Platform = "windows" | "macos" | "linux";
 
 export type RoomType = "direct" | "group";
 
-export type MessageType = "text" | "gif" | "image" | "youtube" | "file" | "system";
+export type MessageType = "text" | "gif" | "image" | "youtube" | "voice" | "file" | "system";
 
 export type ConnectionStatus =
   | "connecting"
@@ -62,11 +62,22 @@ export interface Message {
   deletedAt: string | null;
 }
 
-/** One user's emoji reaction to a message. */
+/** One user's emoji (or GIF-url) reaction to a message. */
 export interface Reaction {
   messageId: string;
   userId: string;
   emoji: string;
+}
+
+/** A message pinned to the top of its room, with enough of the message to render a banner. */
+export interface PinnedMessage {
+  roomId: string;
+  messageId: string;
+  pinnedBy: string;
+  pinnedAt: string;
+  content: string;
+  messageType: MessageType;
+  senderId: string;
 }
 
 /** Open-Graph-style preview for a URL, rendered as a card under a message. */

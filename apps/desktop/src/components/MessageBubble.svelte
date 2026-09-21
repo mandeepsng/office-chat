@@ -13,7 +13,12 @@
   import { splitBlocks, renderInline } from "../lib/markdown";
   import { embedUrl, videoIdFromContent } from "../lib/youtube";
   import { firstUrl, ensurePreview, previewOf } from "../lib/linkPreview.svelte";
+  import { isPinned as messageIsPinned } from "../lib/stores/pins.svelte";
+  import type { Gif } from "../lib/giphy";
   import EmojiPicker from "./EmojiPicker.svelte";
+  import GifPicker from "./GifPicker.svelte";
+  import Icon from "./Icon.svelte";
+  import VoicePlayer from "./VoicePlayer.svelte";
 
   interface Props {
     message: ChatMessage;
@@ -64,6 +69,10 @@
   // Any non-deleted text message can be copied (yours or others').
   const copyable = $derived(message.messageType === "text" && !message.deletedAt);
 
+  // Any non-deleted message can be pinned (or unpinned) by any room member.
+  const pinnable = $derived(!message.deletedAt);
+  const pinned = $derived(messageIsPinned(message.roomId, message.id));
+
   const ownId = $derived(auth.identity?.userId ?? "");
   const groups = $derived(reactionGroups(message.id, ownId));
 
@@ -71,9 +80,15 @@
   const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
   const mineEmojis = $derived(new Set(groups.filter((g) => g.mine).map((g) => g.emoji)));
 
+  /** A GIF reaction stores the GIF's URL in place of an emoji glyph. */
+  function isGifReaction(value: string): boolean {
+    return value.startsWith("http://") || value.startsWith("https://");
+  }
+
   let confirmingDelete = $state(false);
   let copied = $state(false);
   let reacting = $state(false);
+  let givingGif = $state(false);
   let menuOpen = $state(false);
   // URL of the image/GIF currently open in the full-screen viewer.
   let viewer = $state<string | null>(null);
@@ -81,6 +96,16 @@
   function react(emoji: string) {
     controller.toggleReaction(message.id, emoji);
     reacting = false;
+    givingGif = false;
+  }
+
+  function reactGif(gif: Gif) {
+    react(gif.url);
+  }
+
+  function togglePin() {
+    controller.togglePin(message.id);
+    menuOpen = false;
   }
 
   /** Names of everyone who reacted with an emoji, "You" first (Teams-style). */
@@ -96,6 +121,7 @@
   function closeMenus() {
     menuOpen = false;
     reacting = false;
+    givingGif = false;
     confirmingDelete = false;
   }
 
@@ -124,6 +150,7 @@
     if (m.messageType === "gif") return "GIF";
     if (m.messageType === "image") return "Image";
     if (m.messageType === "youtube") return "▶️ Video";
+    if (m.messageType === "voice") return "🎤 Voice message";
     return m.content;
   }
 
@@ -172,24 +199,30 @@
         class="quick"
         aria-label="More emoji"
         title="More emoji"
-        onclick={() => { reacting = !reacting; menuOpen = false; }}
-      >➕</button>
+        onclick={() => { reacting = !reacting; givingGif = false; menuOpen = false; }}
+      ><Icon name="smile" size={17} /></button>
+      <button
+        class="quick gif-react"
+        aria-label="React with GIF"
+        title="React with GIF"
+        onclick={() => { givingGif = !givingGif; reacting = false; menuOpen = false; }}
+      >GIF</button>
       <span class="divider"></span>
       <button
         class="quick"
         aria-label="Reply"
         title="Reply"
         onclick={() => setReplyTarget(message)}
-      >↩</button>
-      {#if copyable || editable || deletable}
+      ><Icon name="reply" size={17} /></button>
+      {#if copyable || editable || deletable || pinnable}
         <button
           class="quick"
           aria-label="More actions"
           title="More actions"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          onclick={() => { menuOpen = !menuOpen; reacting = false; confirmingDelete = false; }}
-        >⋯</button>
+          onclick={() => { menuOpen = !menuOpen; reacting = false; givingGif = false; confirmingDelete = false; }}
+        ><Icon name="more" size={17} /></button>
       {/if}
     </div>
   {/if}
@@ -200,17 +233,20 @@
       <div class="menu" role="menu">
         {#if confirmingDelete}
           <div class="menu-confirm">Delete this message?</div>
-          <button class="menu-item danger" role="menuitem" onclick={confirmDelete}>🗑️ Delete</button>
+          <button class="menu-item danger" role="menuitem" onclick={confirmDelete}><Icon name="trash" size={15} /> Delete</button>
           <button class="menu-item" role="menuitem" onclick={() => (confirmingDelete = false)}>Cancel</button>
         {:else}
           {#if copyable}
-            <button class="menu-item" role="menuitem" onclick={() => { copyText(); menuOpen = false; }}>⧉ {copied ? "Copied!" : "Copy"}</button>
+            <button class="menu-item" role="menuitem" onclick={() => { copyText(); menuOpen = false; }}><Icon name="copy" size={15} /> {copied ? "Copied!" : "Copy"}</button>
+          {/if}
+          {#if pinnable}
+            <button class="menu-item" role="menuitem" onclick={togglePin}><Icon name="pin" size={15} /> {pinned ? "Unpin" : "Pin"}</button>
           {/if}
           {#if editable}
-            <button class="menu-item" role="menuitem" onclick={() => { setEditTarget(message); menuOpen = false; }}>✏️ Edit</button>
+            <button class="menu-item" role="menuitem" onclick={() => { setEditTarget(message); menuOpen = false; }}><Icon name="edit" size={15} /> Edit</button>
           {/if}
           {#if deletable}
-            <button class="menu-item danger" role="menuitem" onclick={() => (confirmingDelete = true)}>🗑️ Delete</button>
+            <button class="menu-item danger" role="menuitem" onclick={() => (confirmingDelete = true)}><Icon name="trash" size={15} /> Delete</button>
           {/if}
         {/if}
       </div>
@@ -220,6 +256,11 @@
   {#if reacting}
     <div class="react-anchor" class:own>
       <EmojiPicker onpick={react} onclose={() => (reacting = false)} />
+    </div>
+  {/if}
+  {#if givingGif}
+    <div class="react-anchor" class:own>
+      <GifPicker onpick={reactGif} onclose={() => (givingGif = false)} />
     </div>
   {/if}
 
@@ -263,6 +304,8 @@
       {:else}
         <a class="md-link" href={message.content} target="_blank" rel="noreferrer">{message.content}</a>
       {/if}
+    {:else if message.messageType === "voice"}
+      <VoicePlayer src={message.content} {own} />
     {:else}
       <div class="text">{#each blocks as block}{#if block.kind === "code"}<pre
             class="code-block"><code>{block.text}</code></pre>{:else}{#each block.parts as part}{#if part.mention}<span
@@ -301,10 +344,18 @@
           class:mine={g.mine}
           onclick={() => react(g.emoji)}
         >
-          <span class="reaction-emoji">{@html emojiHtml(g.emoji)}</span>
+          {#if isGifReaction(g.emoji)}
+            <img class="reaction-gif" src={g.emoji} alt="GIF reaction" loading="lazy" />
+          {:else}
+            <span class="reaction-emoji">{@html emojiHtml(g.emoji)}</span>
+          {/if}
           <span class="reaction-count">{g.count}</span>
           <span class="reactor-tip" role="tooltip">
-            <span class="reactor-emoji">{@html emojiHtml(g.emoji)}</span>
+            {#if isGifReaction(g.emoji)}
+              <img class="reactor-gif" src={g.emoji} alt="" />
+            {:else}
+              <span class="reactor-emoji">{@html emojiHtml(g.emoji)}</span>
+            {/if}
             {reactorNames(g)}
           </span>
         </button>
@@ -328,7 +379,7 @@
   <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
     <button class="lightbox-backdrop" aria-label="Close image" onclick={() => (viewer = null)}></button>
     <img class="lightbox-img" src={viewer} alt="Full size" />
-    <button class="lightbox-close" aria-label="Close" onclick={() => (viewer = null)}>✕</button>
+    <button class="lightbox-close" aria-label="Close" onclick={() => (viewer = null)}><Icon name="close" size={16} /></button>
   </div>
 {/if}
 
@@ -343,10 +394,14 @@
   /* Wrapper sized to the bubble so the hover toolbar can anchor to its edges. */
   .bubble-wrap { position: relative; display: inline-block; max-width: 66%; }
 
-  /* Teams-style floating hover toolbar sitting just below the bubble. */
+  /* Google Chat-style floating hover toolbar sitting just above the bubble.
+     It overlaps the bubble's top edge by a couple px (rather than floating
+     with a gap above it) so the cursor never crosses "dead" empty space
+     while moving from the bubble up into the toolbar — a gap there would
+     drop :hover mid-transition and make the toolbar vanish before it's reached. */
   .actions {
     position: absolute;
-    top: calc(100% + 4px);
+    bottom: calc(100% - 2px);
     display: flex;
     align-items: center;
     gap: 1px;
@@ -357,8 +412,7 @@
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-3px);
-    transition: opacity 0.12s ease, transform 0.12s ease;
+    transition: opacity 0.12s ease;
     z-index: 5;
   }
   .message:not(.own) .actions { left: 0; }
@@ -367,7 +421,6 @@
   .actions:focus-within {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0);
   }
   .quick {
     width: 32px;
@@ -384,6 +437,8 @@
     transition: background 0.1s ease, transform 0.1s ease;
   }
   .quick:hover { background: var(--hover); }
+  /* Not circular — "GIF" is a short word, not a glyph. */
+  .quick.gif-react { width: auto; border-radius: 8px; padding: 0 8px; font-size: 10px; font-weight: 700; }
   /* Emoji reactions render larger and with a real colour-emoji font. */
   .quick.reaction {
     font-size: 20px;
@@ -394,7 +449,7 @@
   .divider { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
 
   /* "More actions" dropdown menu, opening below the toolbar. */
-  .menu-anchor { position: absolute; top: calc(100% + 38px); z-index: 60; }
+  .menu-anchor { position: absolute; bottom: calc(100% + 38px); z-index: 60; }
   .message:not(.own) .menu-anchor { left: 0; }
   .message.own .menu-anchor { right: 0; }
   .menu-backdrop { position: fixed; inset: 0; z-index: 1; border: 0; padding: 0; background: transparent; cursor: default; }
@@ -428,7 +483,7 @@
   .menu-item.danger { color: var(--danger); }
   .menu-confirm { padding: 8px 10px 4px; font-size: 12px; color: var(--text-muted); }
   .edited { font-style: italic; opacity: 0.7; }
-  .react-anchor { position: absolute; top: calc(100% + 38px); z-index: 50; }
+  .react-anchor { position: absolute; bottom: calc(100% + 38px); z-index: 50; }
   .message:not(.own) .react-anchor { left: 0; }
   .message.own .react-anchor { right: 0; }
   .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
@@ -488,6 +543,8 @@
     line-height: 1;
     font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
   }
+  .reaction-gif { width: 26px; height: 18px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+  .reactor-gif { width: 22px; height: 16px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
   .reaction-count { font-weight: 600; }
   .quote {
     display: flex;

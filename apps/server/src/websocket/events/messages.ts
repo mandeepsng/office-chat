@@ -2,7 +2,9 @@ import { ServerEvents, ErrorCodes } from "@office-chat/shared";
 import {
   messageDeleteSchema,
   messageEditSchema,
+  messagePinToggleSchema,
   messageReadSchema,
+  messageSearchSchema,
   messageSendSchema,
   reactionToggleSchema,
 } from "@office-chat/validation";
@@ -64,6 +66,20 @@ export function handleReactionToggle(ec: EventContext, payload: unknown): void {
     messageId: input.messageId,
     reactions,
   });
+}
+
+export function handleMessageSearch(ec: EventContext, payload: unknown): void {
+  const userId = ec.conn.userId!;
+  const input = parseOrThrow(messageSearchSchema, payload);
+  const messages = ec.app.messageService.search(userId, input);
+  ec.conn.send(ServerEvents.MessageSearchResults, { query: input.query, messages });
+}
+
+export function handleMessagePinToggle(ec: EventContext, payload: unknown): void {
+  const userId = ec.conn.userId!;
+  const input = parseOrThrow(messagePinToggleSchema, payload);
+  const { roomId, pins } = ec.app.messageService.togglePin(userId, input);
+  ec.hub.broadcastToRoom(roomId, ServerEvents.RoomPinsUpdated, { roomId, pins });
 }
 
 export function handleMessageRead(ec: EventContext, payload: unknown): void {

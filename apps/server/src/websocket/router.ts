@@ -14,7 +14,9 @@ import {
 import {
   handleMessageDelete,
   handleMessageEdit,
+  handleMessagePinToggle,
   handleMessageRead,
+  handleMessageSearch,
   handleMessageSend,
   handleReactionToggle,
 } from "./events/messages";
@@ -36,6 +38,8 @@ const authedHandlers: Record<string, EventHandler> = {
   [ClientEvents.MessageEdit]: handleMessageEdit,
   [ClientEvents.MessageDelete]: handleMessageDelete,
   [ClientEvents.MessageRead]: handleMessageRead,
+  [ClientEvents.MessageSearch]: handleMessageSearch,
+  [ClientEvents.MessagePinToggle]: handleMessagePinToggle,
   [ClientEvents.ReactionToggle]: handleReactionToggle,
   [ClientEvents.TypingStart]: handleTypingStart,
   [ClientEvents.TypingStop]: handleTypingStop,

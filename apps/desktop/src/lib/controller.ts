@@ -5,6 +5,7 @@ import {
   type Device,
   type Message,
   type MessageType,
+  type PinnedMessage,
   type Reaction,
   type ReadReceipt,
   type Room,
@@ -26,6 +27,8 @@ import { rooms, upsertRoom } from "./stores/rooms.svelte";
 import { directory, setOnline, setUsers, userName } from "./stores/directory.svelte";
 import { setReader, setRoomReads } from "./stores/receipts.svelte";
 import { setReactions, seedReactions } from "./stores/reactions.svelte";
+import { setPins } from "./stores/pins.svelte";
+import { startSearch, setSearchResults } from "./stores/search.svelte";
 import {
   addMessage,
   confirmMessage,
@@ -197,6 +200,10 @@ class Controller {
     this.sendMessage(url, "youtube");
   }
 
+  sendVoice(url: string): void {
+    this.sendMessage(url, "voice");
+  }
+
   /** Edit one of your own text messages; the server broadcasts message:updated. */
   editMessage(messageId: string, content: string): void {
     if (!content.trim()) return;
@@ -208,9 +215,22 @@ class Controller {
     this.client.send(ClientEvents.MessageDelete, { messageId });
   }
 
-  /** Add/remove an emoji reaction on any message in the current room. */
+  /** Add/remove an emoji (or GIF url) reaction on any message in the current room. */
   toggleReaction(messageId: string, emoji: string): void {
     this.client.send(ClientEvents.ReactionToggle, { messageId, emoji });
+  }
+
+  /** Pin/unpin a message; the server broadcasts the room's full pin list back. */
+  togglePin(messageId: string): void {
+    this.client.send(ClientEvents.MessagePinToggle, { messageId });
+  }
+
+  /** Search message content, scoped server-side to the caller's rooms (or one room). */
+  searchMessages(query: string, roomId?: string): void {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    startSearch(trimmed);
+    this.client.send(ClientEvents.MessageSearch, { query: trimmed, ...(roomId ? { roomId } : {}) });
   }
 
   createDirect(userId: string): void {
@@ -285,16 +305,18 @@ class Controller {
     this.client.on(ServerEvents.RoomUpdated, (p) => upsertRoom((p as { room: Room }).room));
 
     this.client.on(ServerEvents.RoomHistory, (p) => {
-      const { roomId, messages: older, hasMore, reads, reactions: reax } = p as {
+      const { roomId, messages: older, hasMore, reads, reactions: reax, pins: roomPins } = p as {
         roomId: string;
         messages: Message[];
         hasMore: boolean;
         reads?: ReadReceipt[];
         reactions?: Reaction[];
+        pins?: PinnedMessage[];
       };
       prependHistory(roomId, older, hasMore);
       if (reads) setRoomReads(roomId, reads);
       if (reax) seedReactions(reax);
+      if (roomPins) setPins(roomId, roomPins);
       this.loadedRooms.add(roomId);
       store.cacheMessages(roomId, roomMessages(roomId));
     });
@@ -302,6 +324,16 @@ class Controller {
     this.client.on(ServerEvents.ReactionUpdated, (p) => {
       const { messageId, reactions: list } = p as { messageId: string; reactions: Reaction[] };
       setReactions(messageId, list);
+    });
+
+    this.client.on(ServerEvents.RoomPinsUpdated, (p) => {
+      const { roomId, pins: roomPins } = p as { roomId: string; pins: PinnedMessage[] };
+      setPins(roomId, roomPins);
+    });
+
+    this.client.on(ServerEvents.MessageSearchResults, (p) => {
+      const { query, messages: results } = p as { query: string; messages: Message[] };
+      setSearchResults(query, results);
     });
 
     this.client.on(ServerEvents.MessageSent, (p) => {
@@ -412,7 +444,9 @@ class Controller {
               ? "Sent an image"
               : message.messageType === "youtube"
                 ? "Shared a video ▶️"
-                : message.content;
+                : message.messageType === "voice"
+                  ? "Sent a voice message 🎤"
+                  : message.content;
         void notifications.notify({
           title: mentionsMe ? `${sender} mentioned you 💬` : sender,
           body: preview,

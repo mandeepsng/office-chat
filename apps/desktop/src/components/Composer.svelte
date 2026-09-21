@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from "svelte";
+  import { tick, onDestroy } from "svelte";
   import type { User } from "@office-chat/shared";
   import { controller } from "../lib/controller";
   import { rooms } from "../lib/stores/rooms.svelte";
@@ -7,12 +7,13 @@
   import { directory, userName } from "../lib/stores/directory.svelte";
   import { replyState, clearReplyTarget } from "../lib/stores/reply.svelte";
   import { editState, clearEditTarget } from "../lib/stores/edit.svelte";
-  import { uploadImage } from "../lib/upload";
+  import { uploadImage, uploadVoice } from "../lib/upload";
   import type { Gif } from "../lib/giphy";
   import { youtubeIdFromUrl, type Video } from "../lib/youtube";
   import EmojiPicker from "./EmojiPicker.svelte";
   import GifPicker from "./GifPicker.svelte";
   import YouTubePicker from "./YouTubePicker.svelte";
+  import Icon from "./Icon.svelte";
 
   let text = $state("");
   let open = $state<null | "emoji" | "gif" | "youtube">(null);
@@ -59,6 +60,79 @@
     }
     input.value = ""; // allow picking the same file again
   }
+
+  // Voice recording state.
+  let recording = $state(false);
+  let recordSeconds = $state(0);
+  let recordError = $state(false);
+  let mediaRecorder: MediaRecorder | null = null;
+  let recordChunks: Blob[] = [];
+  let recordTimer: ReturnType<typeof setInterval> | null = null;
+
+  function formatDuration(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function stopRecordingStream(): void {
+    if (recordTimer) clearInterval(recordTimer);
+    recordTimer = null;
+    mediaRecorder?.stream.getTracks().forEach((t) => t.stop());
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      mediaRecorder?.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      recordChunks = [];
+      recordSeconds = 0;
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        stopRecordingStream();
+        recording = false;
+        const blob = new Blob(recordChunks, { type: mediaRecorder?.mimeType || "audio/webm" });
+        if (recordSeconds >= 1) void uploadAndSendVoice(blob);
+        mediaRecorder = null;
+      };
+      mediaRecorder.start();
+      recording = true;
+      recordTimer = setInterval(() => (recordSeconds += 1), 1000);
+    } catch (err) {
+      console.error("Microphone access failed", err);
+      recordError = true;
+      setTimeout(() => (recordError = false), 3000);
+    }
+  }
+
+  async function uploadAndSendVoice(blob: Blob) {
+    uploading = true;
+    uploadError = false;
+    try {
+      const url = await uploadVoice(blob);
+      controller.sendVoice(url);
+    } catch (err) {
+      console.error("Voice upload failed", err);
+      uploadError = true;
+      setTimeout(() => (uploadError = false), 3000);
+    } finally {
+      uploading = false;
+    }
+  }
+
+  onDestroy(() => {
+    if (recording) mediaRecorder?.stop();
+    stopRecordingStream();
+  });
 
   // @mention autocomplete state.
   let mentionOpen = $state(false);
@@ -201,6 +275,7 @@
     if (t.messageType === "gif") return "GIF";
     if (t.messageType === "image") return "Image";
     if (t.messageType === "youtube") return "▶️ Video";
+    if (t.messageType === "voice") return "🎤 Voice message";
     return t.content;
   }
 
@@ -262,9 +337,9 @@
   {#if editState.target}
     <div class="reply-bar editing">
       <div class="reply-info">
-        <span class="reply-to">✏️ Editing message</span>
+        <span class="reply-to editing-label"><Icon name="edit" size={13} /> Editing message</span>
       </div>
-      <button class="reply-cancel" aria-label="Cancel edit" onclick={cancelEdit}>✕</button>
+      <button class="reply-cancel" aria-label="Cancel edit" onclick={cancelEdit}><Icon name="close" size={14} /></button>
     </div>
   {:else if replyState.target}
     <div class="reply-bar">
@@ -272,7 +347,7 @@
         <span class="reply-to">Replying to <strong>{userName(replyState.target.senderId)}</strong></span>
         <span class="reply-preview">{replyPreview()}</span>
       </div>
-      <button class="reply-cancel" aria-label="Cancel reply" onclick={clearReplyTarget}>✕</button>
+      <button class="reply-cancel" aria-label="Cancel reply" onclick={clearReplyTarget}><Icon name="close" size={14} /></button>
     </div>
   {/if}
 
@@ -326,7 +401,7 @@
     title="Emoji"
     aria-label="Emoji"
     onclick={() => (open = open === "emoji" ? null : "emoji")}
-  >😊</button>
+  ><Icon name="smile" size={19} /></button>
 
   <input
     bind:this={fileInput}
@@ -342,7 +417,23 @@
     aria-label="Upload image from gallery"
     onclick={() => fileInput?.click()}
     disabled={uploading}
-  >🖼️</button>
+  ><Icon name="image" size={19} /></button>
+
+  <button
+    class="icon"
+    class:recording
+    title={recording ? "Stop recording" : "Record voice message"}
+    aria-label={recording ? "Stop recording" : "Record voice message"}
+    onclick={toggleRecording}
+    disabled={uploading}
+  >
+    {#if recording}
+      <Icon name="square" size={13} />
+      <span class="rec-time">{formatDuration(recordSeconds)}</span>
+    {:else}
+      <Icon name="mic" size={19} />
+    {/if}
+  </button>
 
   <textarea
     bind:this={textarea}
@@ -356,9 +447,11 @@
   ></textarea>
 
   {#if uploading}
-    <span class="upload-status" role="status">Uploading image…</span>
+    <span class="upload-status" role="status">Uploading…</span>
   {:else if uploadError}
     <span class="upload-status error" role="status">Upload failed</span>
+  {:else if recordError}
+    <span class="upload-status error" role="status">Microphone access denied</span>
   {/if}
 
   <button
@@ -373,9 +466,9 @@
     title="YouTube"
     aria-label="Search YouTube"
     onclick={() => (open = open === "youtube" ? null : "youtube")}
-  >▶️</button>
+  ><Icon name="play" size={16} /></button>
 
-  <button class="send" onclick={send} disabled={!text.trim()} aria-label="Send">➤</button>
+  <button class="send" onclick={send} disabled={!text.trim()} aria-label="Send"><Icon name="send" size={17} /></button>
 </footer>
 
 <style>
@@ -457,6 +550,10 @@
   textarea:focus { border-color: var(--accent); }
   .icon {
     height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     border: 0;
     border-radius: 10px;
     background: var(--hover);
@@ -465,8 +562,20 @@
     padding: 0 12px;
     font-size: 15px;
   }
+  .icon:hover:not(:disabled) { color: var(--text); background: var(--active); }
   .gif-btn { font-weight: 700; font-size: 12px; }
   .icon:disabled { opacity: 0.5; cursor: not-allowed; }
+  .icon.recording {
+    background: var(--danger);
+    color: white;
+    font-weight: 600;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .rec-time { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
   .file-input { display: none; }
   .reply-bar {
     position: absolute;
@@ -484,6 +593,7 @@
   .reply-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .reply-to { font-size: 12px; color: var(--text-muted); }
   .reply-to strong { color: var(--accent); }
+  .editing-label { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
   .reply-preview {
     font-size: 12px;
     color: var(--text-faint);
@@ -492,11 +602,12 @@
     white-space: nowrap;
   }
   .reply-cancel {
+    display: flex;
+    align-items: center;
     border: 0;
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 13px;
     opacity: 0.6;
     flex-shrink: 0;
   }
@@ -515,12 +626,15 @@
   .send {
     height: 40px;
     width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 0;
     border-radius: 10px;
     background: var(--accent);
     color: var(--accent-contrast);
     cursor: pointer;
-    font-size: 15px;
   }
+  .send:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, black); }
   .send:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

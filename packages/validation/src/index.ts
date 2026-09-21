@@ -84,15 +84,25 @@ export const messageEditSchema = z.object({
 
 export const messageDeleteSchema = z.object({ messageId: uuid });
 
+// `emoji` also carries a GIF reaction's URL (see E2), hence the larger cap.
 export const reactionToggleSchema = z.object({
   messageId: uuid,
-  emoji: z.string().trim().min(1).max(32),
+  emoji: z.string().trim().min(1).max(500),
 });
 
 export const messageReadSchema = z.object({
   roomId: uuid,
   messageId: uuid,
 });
+
+export const messageSearchSchema = z.object({
+  query: nonEmpty(200),
+  // Omit to search every room the caller is a member of.
+  roomId: uuid.optional(),
+  limit: z.number().int().positive().max(50).default(30),
+});
+
+export const messagePinToggleSchema = z.object({ messageId: uuid });
 
 // ---------------------------------------------------------------------------
 // Typing / presence
@@ -116,3 +126,5 @@ export type MessageSendInput = z.infer<typeof messageSendSchema>;
 export type MessageEditInput = z.infer<typeof messageEditSchema>;
 export type MessageReadInput = z.infer<typeof messageReadSchema>;
 export type ReactionToggleInput = z.infer<typeof reactionToggleSchema>;
+export type MessageSearchInput = z.infer<typeof messageSearchSchema>;
+export type MessagePinToggleInput = z.infer<typeof messagePinToggleSchema>;

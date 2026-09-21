@@ -100,6 +100,28 @@ export class MessagesRepository {
     return { messages: page, hasMore };
   }
 
+  /**
+   * Plain `LIKE` search over one or more rooms' non-deleted messages, newest
+   * first. Good enough for a 5-20 person office (see brief §52) — no search
+   * index or ranking.
+   */
+  search(roomIds: string[], query: string, limit: number): Message[] {
+    if (roomIds.length === 0) return [];
+    const placeholders = roomIds.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM messages
+         WHERE room_id IN (${placeholders})
+           AND deleted_at IS NULL
+           AND message_type = 'text'
+           AND content LIKE ? COLLATE NOCASE
+         ORDER BY rowid DESC
+         LIMIT ?`,
+      )
+      .all(...roomIds, `%${query}%`, limit) as MessageRow[];
+    return rows.map(toMessage);
+  }
+
   update(id: string, content: string, updatedAt: string): Message | null {
     this.db
       .prepare(`UPDATE messages SET content = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`)
