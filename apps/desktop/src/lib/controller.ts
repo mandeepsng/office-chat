@@ -20,6 +20,7 @@ import { unread, bumpUnread, clearUnread } from "./stores/unread.svelte";
 import { settings, toggleDnd } from "./stores/settings.svelte";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WsClient } from "./ws/client";
+import { CallManager } from "./call";
 import type { ChatMessage, Identity } from "./types";
 import { connection } from "./stores/connection.svelte";
 import { auth } from "./stores/auth.svelte";
@@ -51,6 +52,7 @@ interface AuthSuccessPayload {
 
 class Controller {
   private readonly client = new WsClient(config.wsUrl);
+  private readonly calls = new CallManager(this.client);
   private readonly loadedRooms = new Set<string>();
   private typingActive = false;
   private typingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -235,6 +237,30 @@ class Controller {
 
   createDirect(userId: string): void {
     this.client.send(ClientEvents.RoomCreate, { type: "direct", memberIds: [userId] });
+  }
+
+  startCall(userId: string): void {
+    this.calls.startCall(userId);
+  }
+
+  acceptCall(): void {
+    void this.calls.accept();
+  }
+
+  rejectCall(): void {
+    this.calls.reject();
+  }
+
+  hangupCall(): void {
+    this.calls.hangup();
+  }
+
+  toggleCallMute(): void {
+    this.calls.toggleMute();
+  }
+
+  toggleCallScreenShare(): void {
+    void this.calls.toggleScreenShare();
   }
 
   createGroup(name: string, memberIds: string[]): void {

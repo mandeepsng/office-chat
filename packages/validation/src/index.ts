@@ -115,6 +115,23 @@ export const presenceUpdateSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Calls (1:1 WebRTC signaling relay — the server never inspects SDP/ICE content)
+// ---------------------------------------------------------------------------
+
+export const callTargetSchema = z.object({ toUserId: uuid });
+
+export const callSdpSchema = z.object({
+  toUserId: uuid,
+  sdp: nonEmpty(20_000),
+});
+
+export const callIceSchema = z.object({
+  toUserId: uuid,
+  // `null` signals end-of-candidates, per the WebRTC spec's onicecandidate event.
+  candidate: z.record(z.string(), z.unknown()).nullable(),
+});
+
+// ---------------------------------------------------------------------------
 // Inferred payload types
 // ---------------------------------------------------------------------------
 
@@ -128,3 +145,6 @@ export type MessageReadInput = z.infer<typeof messageReadSchema>;
 export type ReactionToggleInput = z.infer<typeof reactionToggleSchema>;
 export type MessageSearchInput = z.infer<typeof messageSearchSchema>;
 export type MessagePinToggleInput = z.infer<typeof messagePinToggleSchema>;
+export type CallTargetInput = z.infer<typeof callTargetSchema>;
+export type CallSdpInput = z.infer<typeof callSdpSchema>;
+export type CallIceInput = z.infer<typeof callIceSchema>;

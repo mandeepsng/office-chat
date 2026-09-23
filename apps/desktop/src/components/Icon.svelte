@@ -15,7 +15,11 @@
     | "search"
     | "close"
     | "chevronDown"
-    | "square";
+    | "square"
+    | "phone"
+    | "phoneOff"
+    | "screenShare"
+    | "micOff";
 
   interface Props {
     name: IconName;
@@ -94,5 +98,24 @@
     <path d="M6 9l6 6 6-6" />
   {:else if name === "square"}
     <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" />
+  {:else if name === "phone"}
+    <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z" />
+  {:else if name === "phoneOff"}
+    <path d="M10.7 5.2A2 2 0 0 1 12 4.6l.1.03a2 2 0 0 1 1.4 1.37c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L12.4 12l.2.2M17 15.5c.6.2 1.2.35 1.9.45a2 2 0 0 1 1.7 2v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.9 19.9 0 0 1-3.4-2.8M8 9.7a19.5 19.5 0 0 0 2.4 2.9" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  {:else if name === "screenShare"}
+    <rect x="2" y="4" width="20" height="14" rx="2" />
+    <path d="M8 21h8" />
+    <path d="M12 17v4" />
+    <path d="M12 8v5" />
+    <path d="M9.5 10.5 12 8l2.5 2.5" />
+  {:else if name === "micOff"}
+    <line x1="2" y1="2" x2="22" y2="22" />
+    <path d="M9 9v2a3 3 0 0 0 4.24 2.73" />
+    <path d="M15 6.5V4a3 3 0 0 0-5.94-.6" />
+    <path d="M19 10v1a7 7 0 0 1-9.8 6.4" />
+    <path d="M5 10v1a7 7 0 0 0 .34 2.16" />
+    <path d="M12 18v4" />
+    <path d="M8 22h8" />
   {/if}
 </svg>

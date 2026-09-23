@@ -26,5 +26,9 @@ export function announceOffline(ec: Omit<EventContext, "officeCode">): void {
       userId,
       lastSeenAt: user?.lastSeenAt ?? new Date().toISOString(),
     });
+
+    // A dropped connection shouldn't leave the other side ringing/connected forever.
+    const callPeer = app.callService.end(userId);
+    if (callPeer) hub.sendToUser(callPeer, ServerEvents.CallEnded, { fromUserId: userId });
   }
 }

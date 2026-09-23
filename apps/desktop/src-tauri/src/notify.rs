@@ -78,7 +78,9 @@ pub fn show_notification<R: Runtime>(
         let mut toast = Toast::new(&app_id)
             .title(&title)
             .text1(&body)
-            .duration(Duration::Short)
+            // "Long" keeps a message toast on screen for ~25s instead of the
+            // ~5s default, so it isn't missed while looking away from the screen.
+            .duration(Duration::Long)
             .sound(toast_sound);
 
         // Show the app logo in the toast body — without it Windows renders a
@@ -117,7 +119,7 @@ pub fn show_notification<R: Runtime>(
             // The default daemon timeout is very short — keep it up longer so it
             // isn't missed and there's time to click it. (GNOME still routes
             // normal notifications to its tray after a few seconds.)
-            .timeout(Timeout::Milliseconds(12_000))
+            .timeout(Timeout::Milliseconds(20_000))
             // "default" is the action fired when the notification body is clicked.
             .action("default", "Open");
         if let Some(icon_path) = notification_icon_path() {

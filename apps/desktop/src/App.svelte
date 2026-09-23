@@ -11,6 +11,7 @@
   import ChatView from "./components/ChatView.svelte";
   import Settings from "./components/Settings.svelte";
   import SearchModal from "./components/SearchModal.svelte";
+  import CallOverlay from "./components/CallOverlay.svelte";
   import { settingsUi } from "./lib/stores/settings.svelte";
 
   // While loading a saved identity, a dropped/failed socket surfaces as
@@ -64,6 +65,8 @@
 {#if searchOpen}
   <SearchModal onclose={() => (searchOpen = false)} />
 {/if}
+
+<CallOverlay />
 
 <style>
   .app { display: grid; grid-template-columns: 264px 1fr; height: 100vh; }

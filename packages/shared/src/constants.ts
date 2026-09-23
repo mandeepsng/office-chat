@@ -28,6 +28,11 @@ export const RATE_LIMIT = {
   BURST: 10,
 } as const;
 
+export const CALL = {
+  /** Auto-cancel an outgoing call if the callee doesn't answer in time (ms). */
+  RINGING_TIMEOUT_MS: 45_000,
+} as const;
+
 export const MESSAGE_TYPES = [
   "text",
   "gif",

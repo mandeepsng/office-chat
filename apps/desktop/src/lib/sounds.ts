@@ -64,3 +64,9 @@ export function playIncoming(): void {
 export function playSend(): void {
   blip(320, 560, 0.1, 0.14);
 }
+
+/** Two-tone ring, meant to be replayed on an interval while a call rings. */
+export function playRing(): void {
+  blip(480, 520, 0.22, 0.16);
+  setTimeout(() => blip(480, 520, 0.22, 0.16), 220);
+}

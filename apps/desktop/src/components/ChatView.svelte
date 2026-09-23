@@ -5,6 +5,7 @@
   import { connection } from "../lib/stores/connection.svelte";
   import { directory, userName } from "../lib/stores/directory.svelte";
   import { receipts } from "../lib/stores/receipts.svelte";
+  import { call } from "../lib/stores/call.svelte";
   import { messages, roomMessages } from "../lib/stores/messages.svelte";
   import type { PinnedMessage, User } from "@office-chat/shared";
   import { controller } from "../lib/controller";
@@ -108,6 +109,18 @@
           {/if}
         </small>
       </div>
+      {#if room.type === "direct"}
+        {@const peerId = directPeerId(room, ownId)}
+        <button
+          class="call-btn"
+          disabled={!online || call.phase !== "idle"}
+          onclick={() => peerId && controller.startCall(peerId)}
+          aria-label="Start audio call"
+          title={online ? "Start audio call" : "Offline"}
+        >
+          <Icon name="phone" size={17} />
+        </button>
+      {/if}
     </header>
 
     {#if firstPin}
@@ -197,7 +210,25 @@
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
+  .call-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--hover);
+    color: var(--accent);
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+  }
+  .call-btn:hover:not(:disabled) { background: var(--active); }
+  .call-btn:disabled { color: var(--text-faint); cursor: default; opacity: 0.5; }
 
   /* Pinned-messages strip: a Material-style summary row that expands into a
      card-elevated list, matching the app's existing popover conventions. */

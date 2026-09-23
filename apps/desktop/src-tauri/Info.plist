@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Merged into the generated Info.plist by the Tauri bundler. Required on
+       macOS for the 1:1 audio call feature's getUserMedia() microphone access;
+       without it, macOS silently denies the permission prompt. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>OfficeChat needs microphone access so you can make voice calls with your team.</string>
+</dict>
+</plist>

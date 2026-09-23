@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/db.test.ts test/auth.test.ts test/messages.test.ts test/rooms.test.ts test/link-preview.test.ts test/search-pins.test.ts"
+    "test": "node --import tsx --test test/db.test.ts test/auth.test.ts test/messages.test.ts test/rooms.test.ts test/link-preview.test.ts test/search-pins.test.ts test/calls.test.ts"
   },
   "dependencies": {
     "@office-chat/shared": "workspace:*",

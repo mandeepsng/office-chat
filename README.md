@@ -13,8 +13,9 @@ and simple.
 Direct + group chats · message history with cursor pagination · optimistic send
 with an **offline queue** · exponential-backoff reconnection · presence
 (online/offline) · debounced typing indicators · read receipts · emoji picker ·
-GIPHY GIFs · YouTube search + inline play · native desktop notifications
-(suppressed for the focused room) ·
+GIPHY GIFs · YouTube search + inline play · **1:1 audio calls with screen
+share** (WebRTC, signaled over the same WebSocket) · native desktop
+notifications (suppressed for the focused room) ·
 system tray with close-to-tray · light/dark themes · keyboard shortcuts.
 
 ## Repository layout
@@ -128,10 +129,29 @@ pnpm --filter @office-chat/server start   # tsx src/index.ts
 
 Never use plain `ws://` over the public internet, and never commit real secrets.
 
+## Calls (1:1 audio + screen share)
+
+The click-to-call button on a direct chat starts a WebRTC call; the server
+only relays signaling (`call:*` events) and never sees media. Notes:
+
+- **STUN only by default** (`stun:stun.l.google.com:19302`, set in
+  [`apps/desktop/src/lib/call.ts`](apps/desktop/src/lib/call.ts)). This is
+  enough for most office networks. If calls fail to connect for someone behind
+  a strict NAT/firewall, run a TURN server (e.g. `coturn`) on the same VPS and
+  add it to `ICE_SERVERS`.
+- **macOS** requires the `NSMicrophoneUsageDescription` key, already set in
+  `apps/desktop/src-tauri/Info.plist` and merged into the app bundle by the
+  Tauri build.
+- **Linux screen share** depends on the system WebKitGTK's `getDisplayMedia`
+  support (via PipeWire) — this varies by distro/version; audio calls are
+  unaffected either way.
+- Group calls are out of scope for this app (would need an SFU media server);
+  only one call at a time per user is supported.
+
 ## Future (designed for, not built)
 
-Reactions, replies, file/image sharing, voice/video, multi-office, invite links,
-device management, closed-app push (the notification layer is already behind a
-`NotificationService` interface), and end-to-end encryption.
+Reactions, replies, file/image sharing, group video calls, multi-office,
+invite links, device management, closed-app push (the notification layer is
+already behind a `NotificationService` interface), and end-to-end encryption.
 ## reset DB
 pnpm --filter server dev

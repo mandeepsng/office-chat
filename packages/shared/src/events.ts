@@ -23,6 +23,15 @@ export const ClientEvents = {
   TypingStop: "typing:stop",
 
   PresenceUpdate: "presence:update",
+
+  // 1:1 audio call signaling — relayed by the server, never interpreted.
+  CallInvite: "call:invite",
+  CallAccept: "call:accept",
+  CallReject: "call:reject",
+  CallEnd: "call:end",
+  CallOffer: "call:offer",
+  CallAnswer: "call:answer",
+  CallIce: "call:ice",
 } as const;
 
 export const ServerEvents = {
@@ -49,6 +58,16 @@ export const ServerEvents = {
 
   PresenceOnline: "presence:online",
   PresenceOffline: "presence:offline",
+
+  CallIncoming: "call:incoming",
+  CallAccepted: "call:accepted",
+  CallRejected: "call:rejected",
+  CallEnded: "call:ended",
+  CallBusy: "call:busy",
+  CallUnavailable: "call:unavailable",
+  CallOffer: "call:offer",
+  CallAnswer: "call:answer",
+  CallIce: "call:ice",
 
   Error: "error",
 } as const;

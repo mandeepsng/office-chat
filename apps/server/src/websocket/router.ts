@@ -22,6 +22,15 @@ import {
 } from "./events/messages";
 import { handleTypingStart, handleTypingStop } from "./events/typing";
 import { handlePresenceUpdate } from "./events/presence";
+import {
+  handleCallAccept,
+  handleCallAnswer,
+  handleCallEnd,
+  handleCallIce,
+  handleCallInvite,
+  handleCallOffer,
+  handleCallReject,
+} from "./events/calls";
 
 const preAuthHandlers: Record<string, EventHandler> = {
   [ClientEvents.AuthRegister]: handleAuthRegister,
@@ -44,6 +53,13 @@ const authedHandlers: Record<string, EventHandler> = {
   [ClientEvents.TypingStart]: handleTypingStart,
   [ClientEvents.TypingStop]: handleTypingStop,
   [ClientEvents.PresenceUpdate]: handlePresenceUpdate,
+  [ClientEvents.CallInvite]: handleCallInvite,
+  [ClientEvents.CallAccept]: handleCallAccept,
+  [ClientEvents.CallReject]: handleCallReject,
+  [ClientEvents.CallEnd]: handleCallEnd,
+  [ClientEvents.CallOffer]: handleCallOffer,
+  [ClientEvents.CallAnswer]: handleCallAnswer,
+  [ClientEvents.CallIce]: handleCallIce,
 };
 
 export function route(ec: EventContext, envelope: WsEnvelope): void {
