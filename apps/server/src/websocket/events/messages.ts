@@ -62,8 +62,11 @@ export function handleReactionToggle(ec: EventContext, payload: unknown): void {
   const input = parseOrThrow(reactionToggleSchema, payload);
   const { roomId, reactions } = ec.app.messageService.toggleReaction(userId, input);
   // Broadcast to everyone in the room (including the reactor, to confirm).
+  // roomId rides along so a recipient can look up the message locally (e.g.
+  // to notify its sender) without a round trip.
   ec.hub.broadcastToRoom(roomId, ServerEvents.ReactionUpdated, {
     messageId: input.messageId,
+    roomId,
     reactions,
   });
 }

@@ -27,12 +27,13 @@ import { auth } from "./stores/auth.svelte";
 import { rooms, upsertRoom } from "./stores/rooms.svelte";
 import { directory, setOnline, setUsers, userName } from "./stores/directory.svelte";
 import { setReader, setRoomReads } from "./stores/receipts.svelte";
-import { setReactions, seedReactions } from "./stores/reactions.svelte";
+import { reactions, setReactions, seedReactions } from "./stores/reactions.svelte";
 import { setPins } from "./stores/pins.svelte";
 import { startSearch, setSearchResults } from "./stores/search.svelte";
 import {
   addMessage,
   confirmMessage,
+  findMessage,
   markReadUpTo,
   markRoomFailed,
   prependHistory,
@@ -348,8 +349,14 @@ class Controller {
     });
 
     this.client.on(ServerEvents.ReactionUpdated, (p) => {
-      const { messageId, reactions: list } = p as { messageId: string; reactions: Reaction[] };
+      const { messageId, roomId, reactions: list } = p as {
+        messageId: string;
+        roomId: string;
+        reactions: Reaction[];
+      };
+      const previous = reactions.byMessage[messageId] ?? [];
       setReactions(messageId, list);
+      this.notifyNewReactions(roomId, messageId, previous, list);
     });
 
     this.client.on(ServerEvents.RoomPinsUpdated, (p) => {
@@ -482,6 +489,36 @@ class Controller {
         void flashWindow();
       }
     }
+  }
+
+  /** Notify the message's sender when someone else adds a new reaction to it. */
+  private notifyNewReactions(
+    roomId: string,
+    messageId: string,
+    previous: Reaction[],
+    current: Reaction[],
+  ): void {
+    if (settings.dnd || !settings.notificationsEnabled || !auth.identity) return;
+    const ownId = auth.identity.userId;
+    const message = findMessage(roomId, messageId);
+    if (!message || message.senderId !== ownId) return;
+
+    const added = current.filter(
+      (r) => r.userId !== ownId && !previous.some((p) => p.userId === r.userId && p.emoji === r.emoji),
+    );
+    const latest = added[added.length - 1];
+    if (!latest) return;
+
+    // A room that's open and focused already shows the reaction inline.
+    if (rooms.activeRoomId === roomId && this.windowFocused) return;
+
+    const isGif = latest.emoji.startsWith("http://") || latest.emoji.startsWith("https://");
+    void notifications.notify({
+      title: userName(latest.userId),
+      body: isGif ? "Reacted with a GIF to your message" : `Reacted ${latest.emoji} to your message`,
+      roomId,
+      sound: settings.toastSound,
+    });
   }
 
   private setTyping(payload: unknown, typing: boolean): void {
