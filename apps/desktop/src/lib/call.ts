@@ -5,6 +5,7 @@ import { userName } from "./stores/directory.svelte";
 import { settings } from "./stores/settings.svelte";
 import { notifications } from "./notifications";
 import { playRing } from "./sounds";
+import { bringWindowToFront } from "./window";
 
 // Google's public STUN server is enough for most office networks. A TURN
 // server can be added here later if calls fail behind strict NATs/firewalls
@@ -29,6 +30,7 @@ export class CallManager {
   private screenTrack: MediaStreamTrack | null = null;
   private ringTimer: ReturnType<typeof setInterval> | null = null;
   private ringOutTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly client: WsClient) {
     client.on(ServerEvents.CallIncoming, (p) => this.onIncoming(p as { fromUserId: string; fromName: string }));
@@ -73,6 +75,9 @@ export class CallManager {
     call.phase = "ringing-incoming";
     call.error = null;
     this.startRinging();
+    // A call is a synchronous interruption — surface the app even if it's
+    // minimized/in the tray, so the incoming-call screen is actually seen.
+    void bringWindowToFront();
     if (!settings.dnd) {
       void notifications.notify({ title: "Incoming call", body: `${p.fromName} is calling…` });
     }
@@ -83,9 +88,11 @@ export class CallManager {
     this.stopRinging();
     const toUserId = call.peerUserId;
     call.phase = "connecting";
+    this.startConnectWatchdog();
     try {
       await this.ensureLocalStream();
-    } catch {
+    } catch (err) {
+      console.error("[call] failed to start local media", err);
       this.hangup();
       return;
     }
@@ -103,13 +110,14 @@ export class CallManager {
     if (call.phase !== "ringing-outgoing" || call.peerUserId !== p.fromUserId) return;
     this.clearRingOutTimer();
     call.phase = "connecting";
+    this.startConnectWatchdog();
     try {
       await this.ensureLocalStream();
-    } catch {
+      await this.createOfferAndSend();
+    } catch (err) {
+      console.error("[call] failed to start/offer", err);
       this.hangup();
-      return;
     }
-    await this.createOfferAndSend();
   }
 
   private async ensureLocalStream(): Promise<void> {
@@ -145,9 +153,11 @@ export class CallManager {
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected" && call.phase === "connecting") {
+        this.clearConnectWatchdog();
         call.phase = "connected";
         call.connectedAt = Date.now();
       } else if (pc.connectionState === "failed") {
+        console.error("[call] RTCPeerConnection state: failed");
         this.onRemoteEnd("Call failed — check your connection");
       }
     };
@@ -162,15 +172,25 @@ export class CallManager {
 
   private async onOffer(p: { fromUserId: string; sdp: string }): Promise<void> {
     if (call.peerUserId !== p.fromUserId || !this.pc) return;
-    await this.pc.setRemoteDescription({ type: "offer", sdp: p.sdp });
-    const answer = await this.pc.createAnswer();
-    await this.pc.setLocalDescription(answer);
-    this.client.send(ClientEvents.CallAnswer, { toUserId: p.fromUserId, sdp: answer.sdp });
+    try {
+      await this.pc.setRemoteDescription({ type: "offer", sdp: p.sdp });
+      const answer = await this.pc.createAnswer();
+      await this.pc.setLocalDescription(answer);
+      this.client.send(ClientEvents.CallAnswer, { toUserId: p.fromUserId, sdp: answer.sdp });
+    } catch (err) {
+      console.error("[call] failed to handle offer", err);
+      this.onRemoteEnd("Call failed to connect");
+    }
   }
 
   private async onAnswer(p: { fromUserId: string; sdp: string }): Promise<void> {
     if (call.peerUserId !== p.fromUserId || !this.pc) return;
-    await this.pc.setRemoteDescription({ type: "answer", sdp: p.sdp });
+    try {
+      await this.pc.setRemoteDescription({ type: "answer", sdp: p.sdp });
+    } catch (err) {
+      console.error("[call] failed to handle answer", err);
+      this.onRemoteEnd("Call failed to connect");
+    }
   }
 
   private async onIce(p: { fromUserId: string; candidate: RTCIceCandidateInit | null }): Promise<void> {
@@ -251,9 +271,28 @@ export class CallManager {
     }
   }
 
+  /** Surface a clear error instead of leaving the UI stuck on "Connecting…"
+   * forever if WebRTC never reaches "connected" (e.g. no TURN behind a
+   * strict NAT, or ICE negotiation silently stalls). */
+  private startConnectWatchdog(): void {
+    this.connectTimer = setTimeout(() => {
+      if (call.phase !== "connecting") return;
+      console.error("[call] timed out waiting for the connection to establish");
+      this.onRemoteEnd("Call failed to connect");
+    }, CALL.CONNECT_TIMEOUT_MS);
+  }
+
+  private clearConnectWatchdog(): void {
+    if (this.connectTimer) {
+      clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
+  }
+
   private reset(): void {
     this.stopRinging();
     this.clearRingOutTimer();
+    this.clearConnectWatchdog();
     this.screenTrack?.stop();
     this.screenTrack = null;
     this.localStream?.getTracks().forEach((t) => t.stop());

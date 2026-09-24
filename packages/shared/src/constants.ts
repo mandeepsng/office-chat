@@ -31,6 +31,8 @@ export const RATE_LIMIT = {
 export const CALL = {
   /** Auto-cancel an outgoing call if the callee doesn't answer in time (ms). */
   RINGING_TIMEOUT_MS: 45_000,
+  /** Give up and surface an error if WebRTC never reaches "connected" (ms). */
+  CONNECT_TIMEOUT_MS: 20_000,
 } as const;
 
 export const MESSAGE_TYPES = [

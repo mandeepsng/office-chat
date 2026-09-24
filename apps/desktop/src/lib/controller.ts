@@ -18,7 +18,7 @@ import { playIncoming, playSend } from "./sounds";
 import { setUnreadBadge, flashWindow, onToggleDnd } from "./badge";
 import { unread, bumpUnread, clearUnread } from "./stores/unread.svelte";
 import { settings, toggleDnd } from "./stores/settings.svelte";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { bringWindowToFront } from "./window";
 import { WsClient } from "./ws/client";
 import { CallManager } from "./call";
 import type { ChatMessage, Identity } from "./types";
@@ -114,14 +114,7 @@ class Controller {
 
   /** Bring the window forward (it may be hidden in the tray) and open a room. */
   private async focusRoom(roomId: string): Promise<void> {
-    try {
-      const win = getCurrentWindow();
-      await win.unminimize();
-      await win.show();
-      await win.setFocus();
-    } catch {
-      // Not running under Tauri (dev) — navigation still works below.
-    }
+    await bringWindowToFront();
     if (rooms.list.some((r) => r.id === roomId)) this.openRoom(roomId);
   }
 
